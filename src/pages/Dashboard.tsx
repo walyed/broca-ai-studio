@@ -50,7 +50,7 @@ const Dashboard = () => {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-app flex">
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50
@@ -118,24 +118,24 @@ const Dashboard = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen">
         {/* Top Header */}
-        <header className="h-20 border-b border-border flex items-center justify-between px-6">
+        <header className="h-20 border-b border-app bg-app-card flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <button 
-              className="lg:hidden text-foreground"
+              className="lg:hidden text-app-foreground"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu className="w-6 h-6" />
             </button>
             <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-app-muted" />
               <Input 
                 placeholder="Search clients, deals, documents..." 
-                className="pl-10 w-80 bg-secondary/50 border-border/50"
+                className="pl-10 w-80 bg-app-muted border-app text-app-foreground placeholder:text-app-muted"
               />
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative text-app-foreground">
               <Bell className="w-5 h-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
             </Button>
@@ -150,22 +150,26 @@ const Dashboard = () => {
         <div className="flex-1 p-6 space-y-6 overflow-auto">
           {/* Welcome */}
           <div>
-            <h1 className="font-display text-2xl font-bold text-foreground">Welcome back, John</h1>
-            <p className="text-muted-foreground">Here's what's happening with your deals today.</p>
+            <h1 className="font-display text-2xl font-bold text-app-foreground">Welcome back, John</h1>
+            <p className="text-app-muted">Here's what's happening with your deals today.</p>
           </div>
 
           {/* Stats Grid */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((stat) => (
-              <div key={stat.label} className="glass-card p-6">
+              <div key={stat.label} className="app-card p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`w-10 h-10 rounded-lg bg-secondary/50 flex items-center justify-center ${stat.color}`}>
-                    <stat.icon className="w-5 h-5" />
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                    stat.color === "text-primary" ? "bg-primary/10" : 
+                    stat.color === "text-accent" ? "bg-accent/10" : 
+                    "bg-destructive/10"
+                  }`}>
+                    <stat.icon className={`w-6 h-6 ${stat.color}`} />
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-foreground mb-1">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-xs text-muted-foreground/70 mt-2">{stat.change}</p>
+                <p className="text-sm text-app-muted mb-1">{stat.label}</p>
+                <p className="text-3xl font-bold text-app-foreground">{stat.value}</p>
+                <p className="text-xs text-app-muted mt-2">{stat.change}</p>
               </div>
             ))}
           </div>
@@ -173,11 +177,11 @@ const Dashboard = () => {
           {/* Main Grid */}
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Recent Activity */}
-            <div className="lg:col-span-2 glass-card p-6">
-              <h2 className="font-display text-lg font-semibold text-foreground mb-4">Recent Activity</h2>
+            <div className="lg:col-span-2 app-card p-6">
+              <h2 className="font-display text-lg font-semibold text-app-foreground mb-4">Recent Activity</h2>
               <div className="space-y-4">
                 {recentActivity.map((activity, index) => (
-                  <div key={index} className="flex items-center gap-4 p-4 bg-secondary/30 rounded-lg">
+                  <div key={index} className="flex items-center gap-4 p-4 bg-app-muted rounded-lg">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                       activity.status === "completed" ? "bg-primary/20" : "bg-accent/20"
                     }`}>
@@ -187,35 +191,35 @@ const Dashboard = () => {
                       }
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground">{activity.action}</p>
-                      <p className="text-sm text-muted-foreground">{activity.deal}</p>
+                      <p className="font-medium text-app-foreground">{activity.action}</p>
+                      <p className="text-sm text-app-muted">{activity.deal}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground">{activity.time}</span>
+                    <span className="text-xs text-app-muted">{activity.time}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="glass-card p-6">
-              <h2 className="font-display text-lg font-semibold text-foreground mb-4">Quick Actions</h2>
+            <div className="app-card p-6">
+              <h2 className="font-display text-lg font-semibold text-app-foreground mb-4">Quick Actions</h2>
               <div className="space-y-3">
                 <Link to="/ai-assistant">
-                  <Button variant="outline" className="w-full justify-start gap-3 h-12 border-border/50 hover:bg-secondary/50">
+                  <Button variant="outline" className="w-full justify-start gap-3 h-12 border-app hover:bg-app-muted text-app-foreground">
                     <Sparkles className="w-5 h-5 text-primary" />
                     Ask BROCA AI
                   </Button>
                 </Link>
-                <Button variant="outline" className="w-full justify-start gap-3 h-12 border-border/50 hover:bg-secondary/50">
+                <Button variant="outline" className="w-full justify-start gap-3 h-12 border-app hover:bg-app-muted text-app-foreground">
                   <FileText className="w-5 h-5 text-primary" />
                   Upload Document
                 </Button>
-                <Button variant="outline" className="w-full justify-start gap-3 h-12 border-border/50 hover:bg-secondary/50">
+                <Button variant="outline" className="w-full justify-start gap-3 h-12 border-app hover:bg-app-muted text-app-foreground">
                   <Users className="w-5 h-5 text-primary" />
                   Add New Client
                 </Button>
                 <Link to="/reports">
-                  <Button variant="outline" className="w-full justify-start gap-3 h-12 border-border/50 hover:bg-secondary/50">
+                  <Button variant="outline" className="w-full justify-start gap-3 h-12 border-app hover:bg-app-muted text-app-foreground">
                     <BarChart3 className="w-5 h-5 text-primary" />
                     View Reports
                   </Button>
