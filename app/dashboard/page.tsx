@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/supabase/auth-context";
 import { 
   LayoutDashboard, 
   Users, 
@@ -60,6 +61,17 @@ const recentActivity = [
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  // Get user's name from metadata or email
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  const userEmail = user?.email || '';
+  const userInitials = userName
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'U';
 
   return (
     <div className="min-h-screen bg-app flex">
@@ -113,11 +125,11 @@ export default function Dashboard() {
           <div className="p-4 border-t border-sidebar-border">
             <div className="flex items-center gap-3 px-4 py-3">
               <div className="w-10 h-10 rounded-full bg-sidebar-primary/20 flex items-center justify-center">
-                <span className="text-sidebar-foreground font-semibold">JS</span>
+                <span className="text-sidebar-foreground font-semibold">{userInitials}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">John Smith</p>
-                <p className="text-xs text-sidebar-foreground/60 truncate">john@realestate.com</p>
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{userName}</p>
+                <p className="text-xs text-sidebar-foreground/60 truncate">{userEmail}</p>
               </div>
             </div>
           </div>
@@ -167,7 +179,7 @@ export default function Dashboard() {
         <div className="flex-1 p-6 space-y-6 overflow-auto">
           {/* Welcome */}
           <div>
-            <h1 className="font-display text-2xl font-bold text-app-foreground">Welcome back, John</h1>
+            <h1 className="font-display text-2xl font-bold text-app-foreground">Welcome back, {userName.split(' ')[0]}</h1>
             <p className="text-app-muted">Here's what's happening with your client onboardings today.</p>
           </div>
 
