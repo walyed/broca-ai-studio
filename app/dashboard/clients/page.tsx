@@ -61,10 +61,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { useClients, useCreateClient, useUpdateClient, useDeleteClient, useFormTemplates } from "@/lib/hooks/use-database";
+import { useClients, useCreateClientWithEmail, useUpdateClient, useDeleteClient, useFormTemplates, useResendClientOnboarding } from "@/lib/hooks/use-database";
 import type { Client, OnboardingStatus } from "@/lib/types/database";
 import { formatDistanceToNow, format } from "date-fns";
 import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const statusConfig: Record<OnboardingStatus, { label: string; color: string; icon: React.ElementType }> = {
   pending: { label: "Pending", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Clock },
@@ -81,6 +82,7 @@ const wizardSteps = [
 ];
 
 export default function Clients() {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
@@ -103,9 +105,10 @@ export default function Clients() {
 
   // Fetch clients from database
   const { data: clients, isLoading } = useClients();
-  const createClient = useCreateClient();
+  const createClientWithEmail = useCreateClientWithEmail();
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
+  const resendOnboarding = useResendClientOnboarding();
   
   // Fetch form templates from database
   const { data: dbFormTemplates = [], isLoading: formsLoading } = useFormTemplates();
@@ -137,16 +140,23 @@ export default function Clients() {
   const handleSendOnboarding = async () => {
     if (!newClient.name || !newClient.email) return;
     
+    // Get selected form details
+    const selectedFormDetails = allFormTemplates.find(f => f.id === selectedForm);
+    
     try {
-      await createClient.mutateAsync({
+      await createClientWithEmail.mutateAsync({
         name: newClient.name,
         email: newClient.email,
-        phone: newClient.phone || null,
-        status: 'pending',
-        notes: newClient.notes || null,
-        onboarding_progress: 0,
-        documents_submitted: 0,
-        documents_required: 5
+        phone: newClient.phone || undefined,
+        notes: newClient.notes || undefined,
+        formTemplateId: selectedForm.startsWith('quick-') ? undefined : selectedForm,
+        formName: selectedFormDetails?.name,
+        sendEmail: notifications.sendEmail,
+      });
+      
+      toast({
+        title: "Onboarding Sent!",
+        description: `An onboarding invitation has been sent to ${newClient.email}`,
       });
       
       setIsNewClientOpen(false);
@@ -162,6 +172,28 @@ export default function Clients() {
       });
     } catch (error) {
       console.error('Failed to create client:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send onboarding",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResendOnboarding = async (clientId: string, clientEmail: string) => {
+    try {
+      await resendOnboarding.mutateAsync(clientId);
+      toast({
+        title: "Onboarding Resent!",
+        description: `A new onboarding link has been sent to ${clientEmail}`,
+      });
+    } catch (error) {
+      console.error('Failed to resend onboarding:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to resend onboarding",
+        variant: "destructive",
+      });
     }
   };
 
@@ -593,9 +625,14 @@ export default function Clients() {
                 <Button 
                   className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={handleSendOnboarding}
+                  disabled={createClientWithEmail.isPending}
                 >
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Onboarding
+                  {createClientWithEmail.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
+                  {createClientWithEmail.isPending ? 'Sending...' : 'Send Onboarding'}
                 </Button>
               )}
             </div>
@@ -751,9 +788,13 @@ export default function Clients() {
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
+                        <DropdownMenuItem 
+                          className="text-app-foreground hover:bg-app-muted cursor-pointer"
+                          onClick={() => handleResendOnboarding(client.id, client.email)}
+                          disabled={resendOnboarding.isPending}
+                        >
                           <Send className="w-4 h-4 mr-2" />
-                          Resend Invite
+                          {resendOnboarding.isPending ? 'Sending...' : 'Resend Onboarding'}
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
                           <Phone className="w-4 h-4 mr-2" />

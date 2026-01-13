@@ -1,31 +1,164 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { Eye, EyeOff, ArrowRight, Check, Loader2 } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Eye, EyeOff, ArrowRight, Check, Loader2, Gift, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BrocaLogo from "@/components/ui/BrocaLogo";
 import { useAuth } from "@/lib/supabase/auth-context";
+import { LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { createClient } from "@/lib/supabase/client";
+
+interface InvitationData {
+  id: string;
+  email: string;
+  name: string | null;
+  plan_id: string | null;
+  plan?: {
+    id: string;
+    name: string;
+    price: number;
+    tokens_per_month: number;
+  };
+}
+
+interface Plan {
+  id: string;
+  name: string;
+  price: number;
+  tokens_per_month: number;
+  description: string | null;
+}
 
 const benefits = [
-  "14-day free trial, no credit card required",
-  "Full access to all AI features",
-  "Cancel anytime, no questions asked",
+  "AI-powered document extraction",
+  "Customizable onboarding forms",
+  "Automated client notifications",
 ];
 
-export default function Signup() {
+function SignupContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const invitationToken = searchParams.get("invitation");
+  const subscriptionStatus = searchParams.get("subscription");
+  const stepParam = searchParams.get("step");
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [invitation, setInvitation] = useState<InvitationData | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<string>("");
+  const [step, setStep] = useState<"signup" | "plan" | "checkout">(
+    stepParam === "plan" ? "plan" : "signup"
+  );
+  const [isLoadingInvitation, setIsLoadingInvitation] = useState(!!invitationToken);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  const { signUpWithEmail, signInWithGoogle } = useAuth();
+  const { signUpWithEmail, signInWithGoogle, signOut, user } = useAuth();
   const { toast } = useToast();
+
+  // Fetch invitation details if token provided
+  useEffect(() => {
+    if (invitationToken) {
+      fetchInvitation(invitationToken);
+    }
+    fetchPlans();
+  }, [invitationToken]);
+
+  // Handle subscription status from redirect
+  useEffect(() => {
+    if (subscriptionStatus === "cancelled") {
+      toast({
+        title: "Subscription Cancelled",
+        description: "You can complete your subscription anytime.",
+      });
+    }
+  }, [subscriptionStatus, toast]);
+
+  // If user is logged in and step=plan (but NOT invitation), show plan selection
+  // For invitation links, we want to show a sign-out prompt instead
+  useEffect(() => {
+    if (user && stepParam === "plan" && !invitationToken && step === "signup") {
+      setStep("plan");
+    }
+  }, [user, step, stepParam, invitationToken]);
+
+  const fetchInvitation = async (token: string) => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("broker_invitations")
+      .select(`
+        id, email, name, plan_id, expires_at,
+        plan:subscription_plans(id, name, price, tokens_per_month)
+      `)
+      .eq("invitation_token", token)
+      .eq("status", "pending")
+      .single();
+
+    setIsLoadingInvitation(false);
+
+    if (error || !data) {
+      toast({
+        title: "Invalid Invitation",
+        description: "This invitation link is invalid or has expired.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if expired
+    const expiresAt = new Date(data.expires_at || 0);
+    if (expiresAt < new Date()) {
+      toast({
+        title: "Invitation Expired",
+        description: "This invitation link has expired. Please contact support.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Transform the data
+    const planData = Array.isArray(data.plan) ? data.plan[0] : data.plan;
+    const invitationData: InvitationData = {
+      id: data.id,
+      email: data.email,
+      name: data.name,
+      plan_id: data.plan_id,
+      plan: planData || undefined,
+    };
+
+    setInvitation(invitationData);
+    setEmail(data.email);
+    setName(data.name || "");
+    if (data.plan_id) {
+      setSelectedPlan(data.plan_id);
+    }
+  };
+
+  const fetchPlans = async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("subscription_plans")
+      .select("*")
+      .eq("is_active", true)
+      .order("price", { ascending: true });
+
+    if (data) {
+      setPlans(data);
+      if (!selectedPlan && data.length > 0) {
+        setSelectedPlan(data[0].id);
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,8 +175,15 @@ export default function Signup() {
       } else {
         toast({
           title: "Check your email",
-          description: "We sent you a confirmation link. Please check your email to verify your account.",
+          description: "We sent you a confirmation link. Please verify your email to continue.",
         });
+        // If invitation, stay on page to show plan selection after email verification
+        if (invitation) {
+          toast({
+            title: "Next Step",
+            description: "After verifying your email, sign in to complete your subscription.",
+          });
+        }
       }
     } catch {
       toast({
@@ -59,6 +199,10 @@ export default function Signup() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
+      // Store invitation token for after OAuth redirect
+      if (invitationToken) {
+        sessionStorage.setItem("invitation_token", invitationToken);
+      }
       await signInWithGoogle();
     } catch {
       toast({
@@ -69,6 +213,221 @@ export default function Signup() {
       setIsGoogleLoading(false);
     }
   };
+
+  const handleCheckout = async () => {
+    if (!user || !selectedPlan) return;
+
+    setCheckoutLoading(true);
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId: selectedPlan,
+          userId: user.id,
+          invitationToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create checkout session");
+      }
+
+      // Redirect to Stripe checkout
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      toast({
+        title: "Checkout Error",
+        description: error instanceof Error ? error.message : "Failed to start checkout",
+        variant: "destructive",
+      });
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  if (isLoadingInvitation) {
+    return (
+      <div className="min-h-screen hero-gradient flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // If user is logged in and has an invitation token, show sign-out prompt
+  if (user && invitationToken && invitation) {
+    return (
+      <div className="min-h-screen hero-gradient flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-block">
+              <BrocaLogo size="lg" />
+            </Link>
+          </div>
+
+          <div className="glass-card p-8">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-4">
+                <Gift className="w-8 h-8 text-yellow-500" />
+              </div>
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">
+                You Have an Invitation
+              </h1>
+              <p className="text-muted-foreground">
+                You&apos;re currently logged in as <strong>{user.email}</strong>. 
+                To use this invitation for <strong>{invitation.email}</strong>, please sign out first.
+              </p>
+            </div>
+
+            {invitation.plan && (
+              <div className="mb-6 p-4 bg-primary/10 rounded-xl border border-primary/20">
+                <div className="flex items-center gap-3">
+                  <Gift className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {invitation.plan.name} Plan Invitation
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      ${invitation.plan.price}/month • {invitation.plan.tokens_per_month} tokens
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={() => signOut()}
+              className="w-full h-12 btn-glow bg-primary hover:bg-primary/90 mb-3"
+            >
+              <LogOut className="mr-2 w-5 h-5" />
+              Sign Out & Accept Invitation
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => router.push('/dashboard')}
+              className="w-full"
+            >
+              Continue as {user.email?.split('@')[0]}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show plan selection if user is logged in and step=plan (but NOT for invitation links)
+  if (user && (step === "plan" || stepParam === "plan") && !invitationToken) {
+    return (
+      <div className="min-h-screen hero-gradient flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-2xl">
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-block">
+              <BrocaLogo size="lg" />
+            </Link>
+          </div>
+
+          <div className="glass-card p-8">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                <CreditCard className="w-8 h-8 text-primary" />
+              </div>
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">
+                Choose Your Plan
+              </h1>
+              <p className="text-muted-foreground">
+                Select a plan to continue
+              </p>
+            </div>
+
+            {invitation?.plan && (
+              <div className="mb-6 p-4 bg-primary/10 rounded-xl border border-primary/20">
+                <div className="flex items-center gap-3">
+                  <Gift className="w-5 h-5 text-primary" />
+                  <span className="text-sm text-foreground">
+                    Recommended: <strong>{invitation.plan.name}</strong> plan
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-4 mb-8">
+              {plans.map((plan) => (
+                <Card
+                  key={plan.id}
+                  className={`cursor-pointer transition-all ${
+                    selectedPlan === plan.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border/50 hover:border-primary/50"
+                  }`}
+                  onClick={() => setSelectedPlan(plan.id)}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{plan.name}</CardTitle>
+                      <div className="text-right">
+                        <span className="text-2xl font-bold">${plan.price}</span>
+                        <span className="text-muted-foreground text-sm">/month</span>
+                      </div>
+                    </div>
+                    <CardDescription>{plan.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Check className="w-4 h-4 text-primary" />
+                      <span>
+                        {plan.tokens_per_month === -1
+                          ? "Unlimited tokens"
+                          : `${plan.tokens_per_month.toLocaleString()} tokens/month`}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Button
+              onClick={handleCheckout}
+              className="w-full h-12 btn-glow bg-primary hover:bg-primary/90"
+              disabled={checkoutLoading || !selectedPlan}
+            >
+              {checkoutLoading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  Continue to Payment
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </>
+              )}
+            </Button>
+
+            <p className="mt-4 text-xs text-muted-foreground text-center">
+              Secure payment powered by Stripe
+            </p>
+
+            {/* Sign out option for admins testing the flow */}
+            <div className="mt-6 pt-6 border-t border-border/50">
+              <p className="text-sm text-muted-foreground text-center mb-3">
+                Want to test the full signup flow?
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => signOut()}
+                className="w-full"
+              >
+                <LogOut className="mr-2 w-4 h-4" />
+                Sign out to create a new account
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen hero-gradient flex items-center justify-center px-6 py-12">
@@ -84,12 +443,30 @@ export default function Signup() {
         <div className="glass-card p-8">
           <div className="text-center mb-8">
             <h1 className="font-display text-2xl font-bold text-foreground mb-2">
-              Get Early Access
+              {invitation ? "Accept Your Invitation" : "Get Early Access"}
             </h1>
             <p className="text-muted-foreground">
-              Join 2,500+ agents already on the waitlist
+              {invitation
+                ? `Welcome${invitation.name ? `, ${invitation.name}` : ""}! Create your account to get started.`
+                : "Join 2,500+ agents already on the waitlist"}
             </p>
           </div>
+
+          {invitation && invitation.plan && (
+            <div className="mb-6 p-4 bg-primary/10 rounded-xl border border-primary/20">
+              <div className="flex items-center gap-3">
+                <Gift className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {invitation.plan.name} Plan
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    ${invitation.plan.price}/month • {invitation.plan.tokens_per_month === -1 ? "Unlimited" : invitation.plan.tokens_per_month} tokens
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Benefits */}
           <div className="mb-6 space-y-3">
@@ -238,5 +615,17 @@ export default function Signup() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Signup() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen hero-gradient flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    }>
+      <SignupContent />
+    </Suspense>
   );
 }

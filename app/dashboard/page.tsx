@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/supabase/auth-context";
 import { useBrokerStats, useClients, useSubscription } from "@/lib/hooks/use-database";
 import { formatDistanceToNow } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { 
   LayoutDashboard, 
   Users, 
@@ -46,13 +48,81 @@ const sidebarItems = [
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
   const pathname = usePathname();
-  const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const { user, loading: authLoading } = useAuth();
+  const processedRef = useRef(false);
   
   // Fetch data from database
   const { data: stats, isLoading: statsLoading } = useBrokerStats();
   const { data: clients, isLoading: clientsLoading } = useClients();
-  const { data: subscription, isLoading: subLoading } = useSubscription();
+  const { data: subscription, isLoading: subLoading, refetch: refetchSubscription } = useSubscription();
+
+  // Handle successful payment - create subscription from Stripe session
+  useEffect(() => {
+    const sessionId = searchParams.get('session_id');
+    const subscriptionStatus = searchParams.get('subscription');
+    
+    if (sessionId && subscriptionStatus === 'success' && !processedRef.current) {
+      processedRef.current = true;
+      setProcessingPayment(true);
+      
+      // Call API to create subscription from Stripe session
+      fetch('/api/stripe/success', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      })
+        .then(res => res.json())
+        .then(async (data) => {
+          if (data.success) {
+            toast.success('Subscription activated successfully!');
+            // Wait a bit for database to sync, then refresh
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Force clear cache and refetch
+            queryClient.removeQueries({ queryKey: ['subscription'] });
+            await refetchSubscription();
+            // Set processing to false before redirecting
+            setProcessingPayment(false);
+            // Remove query params from URL
+            router.replace('/dashboard');
+          } else {
+            toast.error(data.error || 'Failed to activate subscription');
+            setProcessingPayment(false);
+          }
+        })
+        .catch(err => {
+          console.error('Error processing payment:', err);
+          toast.error('Failed to process payment');
+          setProcessingPayment(false);
+        });
+    }
+  }, [searchParams, refetchSubscription, queryClient, router]);
+
+  // Redirect to plan selection if no active subscription (but not while processing payment)
+  useEffect(() => {
+    // Wait for everything to load
+    if (authLoading || subLoading) return;
+    
+    // Don't redirect if we're processing a payment
+    if (processingPayment) return;
+    
+    // Don't redirect if there's a session_id in the URL (payment just completed)
+    const sessionId = searchParams.get('session_id');
+    if (sessionId) return;
+    
+    // If user is logged in but has no subscription, redirect to plan selection
+    // Add a small delay to allow for any async state updates
+    if (user && !subscription) {
+      const timer = setTimeout(() => {
+        router.push('/signup?step=plan');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [user, subscription, subLoading, authLoading, router, processingPayment, searchParams]);
 
   // Get user's name from metadata or email
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
@@ -64,7 +134,20 @@ export default function Dashboard() {
     .toUpperCase()
     .slice(0, 2) || 'U';
 
-  const isLoading = statsLoading || clientsLoading || subLoading;
+  const isLoading = statsLoading || clientsLoading || subLoading || processingPayment;
+
+  // Show loading while processing payment
+  if (processingPayment) {
+    return (
+      <div className="min-h-screen bg-app flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-app-foreground mb-2">Activating Your Subscription</h2>
+          <p className="text-app-muted">Please wait while we set up your account...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Prepare stats for display
   const displayStats = [

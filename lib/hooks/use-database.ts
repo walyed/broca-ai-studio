@@ -73,17 +73,16 @@ export function useSubscription() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
-      const { data, error } = await supabase
-        .from('broker_subscriptions')
-        .select(`
-          *,
-          plan:subscription_plans(*)
-        `)
-        .eq('broker_id', user.id)
-        .single();
+      // Use API route to bypass RLS
+      const response = await fetch(`/api/subscription?userId=${user.id}`);
+      const data = await response.json();
 
-      if (error && error.code !== 'PGRST116') throw error;
-      return data as BrokerSubscription | null;
+      if (!response.ok) {
+        console.error('Subscription fetch error:', data.error);
+        return null;
+      }
+
+      return data.subscription as BrokerSubscription | null;
     },
   });
 }
@@ -207,6 +206,92 @@ export function useDeleteClient() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       queryClient.invalidateQueries({ queryKey: ['broker-stats'] });
+    },
+  });
+}
+
+// Create client and send onboarding email
+export function useCreateClientWithEmail() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      name, 
+      email, 
+      phone, 
+      notes, 
+      formTemplateId, 
+      formName,
+      sendEmail = true 
+    }: { 
+      name: string; 
+      email: string; 
+      phone?: string; 
+      notes?: string;
+      formTemplateId?: string;
+      formName?: string;
+      sendEmail?: boolean;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Call API route to create client and send email
+      const response = await fetch('/api/clients/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientName: name,
+          clientEmail: email,
+          clientPhone: phone,
+          clientNotes: notes,
+          formTemplateId,
+          formName,
+          brokerId: user.id,
+          sendEmail,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create client');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['broker-stats'] });
+    },
+  });
+}
+
+// Resend onboarding email to existing client
+export function useResendClientOnboarding() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (clientId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const response = await fetch('/api/clients/onboarding', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          brokerId: user.id,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to resend onboarding email');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
     },
   });
 }

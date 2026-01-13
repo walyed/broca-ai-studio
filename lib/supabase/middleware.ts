@@ -72,12 +72,18 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect logged-in users away from auth pages
+  // Exception: Allow /signup with invitation token or step=plan (for plan selection after signup)
   const authPaths = ['/login', '/signup']
   const isAuthPath = authPaths.some(path => 
     request.nextUrl.pathname === path
   )
+  
+  // Don't redirect if user is on signup page with an invitation token or step=plan
+  const hasInvitationToken = request.nextUrl.searchParams.has('invitation')
+  const hasStepPlan = request.nextUrl.searchParams.get('step') === 'plan'
+  const isSignupWithSpecialParams = request.nextUrl.pathname === '/signup' && (hasInvitationToken || hasStepPlan)
 
-  if (isAuthPath && user) {
+  if (isAuthPath && user && !isSignupWithSpecialParams) {
     // Check if user is admin to redirect appropriately
     const { data: profile, error } = await supabase
       .from('profiles')

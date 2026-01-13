@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { 
   CreditCard, 
   Check, 
@@ -35,12 +36,20 @@ import { useSubscription, useSubscriptionPlans, useBrokerStats } from "@/lib/hoo
 
 export default function Subscription() {
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const router = useRouter();
 
   const { data: subscription, isLoading: subscriptionLoading } = useSubscription();
   const { data: plans = [], isLoading: plansLoading } = useSubscriptionPlans();
   const { data: stats, isLoading: statsLoading } = useBrokerStats();
 
   const isLoading = subscriptionLoading || plansLoading || statsLoading;
+
+  // Redirect to plan selection if no subscription
+  useEffect(() => {
+    if (!isLoading && !subscription) {
+      router.push('/signup?step=plan');
+    }
+  }, [isLoading, subscription, router]);
 
   const currentPlan = subscription?.plan;
   const renewalDate = subscription?.current_period_end 

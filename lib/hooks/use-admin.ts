@@ -206,19 +206,24 @@ export function useCreateInvitation() {
     mutationFn: async ({ email, name, planId }: { email: string; name?: string; planId?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
-      const { data, error } = await supabase
-        .from('broker_invitations')
-        .insert({
+      // Call API route to create invitation and send email
+      const response = await fetch('/api/admin/invitations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           email,
           name,
-          plan_id: planId,
-          invited_by: user?.id,
-        })
-        .select()
-        .single();
+          planId,
+          adminId: user?.id,
+        }),
+      });
 
-      if (error) throw error;
-      return data;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send invitation');
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'invitations'] });
@@ -231,18 +236,19 @@ export function useResendInvitation() {
 
   return useMutation({
     mutationFn: async (invitationId: string) => {
-      const { data, error } = await supabase
-        .from('broker_invitations')
-        .update({
-          status: 'pending',
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        })
-        .eq('id', invitationId)
-        .select()
-        .single();
+      // Call API route to resend invitation email
+      const response = await fetch('/api/admin/invitations', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invitationId }),
+      });
 
-      if (error) throw error;
-      return data;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to resend invitation');
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'invitations'] });
