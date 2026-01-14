@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   Plus, 
   Search, 
@@ -61,6 +62,7 @@ const categoryConfig: Record<FormCategory, { label: string; color: string; icon:
 };
 
 export default function Forms() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newForm, setNewForm] = useState({ name: "", description: "", category: "" as FormCategory });
@@ -166,7 +168,7 @@ export default function Forms() {
                   placeholder="Describe the purpose of this form..."
                   value={newForm.description}
                   onChange={(e) => setNewForm({ ...newForm, description: e.target.value })}
-                  className="bg-app-muted border-app text-app-foreground resize-none"
+                  className="bg-app-muted border-app text-app-foreground placeholder:text-app-muted resize-none"
                   rows={3}
                 />
               </div>
@@ -177,10 +179,10 @@ export default function Forms() {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent className="bg-app-card border-app">
-                    <SelectItem value="buyer">Buyer</SelectItem>
-                    <SelectItem value="seller">Seller</SelectItem>
-                    <SelectItem value="rental">Rental</SelectItem>
-                    <SelectItem value="general">General</SelectItem>
+                    <SelectItem value="buyer" className="text-app-foreground hover:bg-app-muted">Buyer</SelectItem>
+                    <SelectItem value="seller" className="text-app-foreground hover:bg-app-muted">Seller</SelectItem>
+                    <SelectItem value="rental" className="text-app-foreground hover:bg-app-muted">Rental</SelectItem>
+                    <SelectItem value="general" className="text-app-foreground hover:bg-app-muted">General</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -274,22 +276,21 @@ export default function Forms() {
             </div>
           </Link>
           
-          <div 
-            onClick={() => setIsCreateOpen(true)}
-            className="app-card p-5 border-2 border-dashed border-app hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer group h-full"
-          >
-            <div className="flex flex-col gap-3">
-              <div className="w-10 h-10 rounded-xl bg-app-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-                <Plus className="w-5 h-5 text-app-muted group-hover:text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-app-foreground mb-1">Blank Form</h3>
-                <p className="text-xs text-app-muted">
-                  Start from scratch with a custom form template.
-                </p>
+          <Link href="/dashboard/forms/create?template=blank" className="block">
+            <div className="app-card p-5 border-2 border-dashed border-app hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer group h-full">
+              <div className="flex flex-col gap-3">
+                <div className="w-10 h-10 rounded-xl bg-app-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                  <Plus className="w-5 h-5 text-app-muted group-hover:text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-app-foreground mb-1">Blank Form</h3>
+                  <p className="text-xs text-app-muted">
+                    Start from scratch with a custom form template.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          </Link>
         </div>
       </div>
 
@@ -360,15 +361,38 @@ export default function Forms() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-app-card border-app">
-                    <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
+                    <DropdownMenuItem 
+                      className="text-app-foreground hover:bg-app-muted cursor-pointer"
+                      onClick={() => router.push(`/dashboard/forms/${form.id}`)}
+                    >
                       <Eye className="w-4 h-4 mr-2" />
                       Preview
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
+                    <DropdownMenuItem 
+                      className="text-app-foreground hover:bg-app-muted cursor-pointer"
+                      onClick={() => router.push(`/dashboard/forms/${form.id}?tab=edit`)}
+                    >
                       <Pencil className="w-4 h-4 mr-2" />
                       Edit
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
+                    <DropdownMenuItem 
+                      className="text-app-foreground hover:bg-app-muted cursor-pointer"
+                      onClick={async () => {
+                        try {
+                          await createForm.mutateAsync({
+                            name: `${form.name} (Copy)`,
+                            description: form.description,
+                            category: form.category,
+                            fields: form.fields || [],
+                            fields_count: form.fields_count || 0,
+                            status: "draft" as FormStatus,
+                          });
+                          toast.success("Form duplicated successfully");
+                        } catch {
+                          toast.error("Failed to duplicate form");
+                        }
+                      }}
+                    >
                       <Copy className="w-4 h-4 mr-2" />
                       Duplicate
                     </DropdownMenuItem>

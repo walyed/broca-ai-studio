@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { 
   Plus, 
   Search, 
@@ -83,6 +84,7 @@ const wizardSteps = [
 
 export default function Clients() {
   const { toast } = useToast();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
@@ -150,6 +152,7 @@ export default function Clients() {
         phone: newClient.phone || undefined,
         notes: newClient.notes || undefined,
         formTemplateId: selectedForm.startsWith('quick-') ? undefined : selectedForm,
+        formType: selectedForm.startsWith('quick-') ? selectedForm : undefined,
         formName: selectedFormDetails?.name,
         sendEmail: notifications.sendEmail,
       });
@@ -719,6 +722,7 @@ export default function Clients() {
           <TableHeader>
             <TableRow className="border-app hover:bg-transparent">
               <TableHead className="text-app-muted font-semibold">Client</TableHead>
+              <TableHead className="text-app-muted font-semibold">Form Type</TableHead>
               <TableHead className="text-app-muted font-semibold">Status</TableHead>
               <TableHead className="text-app-muted font-semibold hidden md:table-cell">Progress</TableHead>
               <TableHead className="text-app-muted font-semibold hidden lg:table-cell">Documents</TableHead>
@@ -730,7 +734,11 @@ export default function Clients() {
             {filteredClients.map((client) => {
               const StatusIcon = statusConfig[client.status].icon;
               return (
-                <TableRow key={client.id} className="border-app hover:bg-app-muted/50">
+                <TableRow 
+                  key={client.id} 
+                  className="border-app hover:bg-app-muted/50 cursor-pointer"
+                  onClick={() => router.push(`/dashboard/clients/${client.id}`)}
+                >
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -745,6 +753,16 @@ export default function Clients() {
                           {client.email}
                         </div>
                       </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      <span className="text-app-foreground font-medium">
+                        {client.form_type === 'quick-real-estate' ? 'Real Estate' :
+                         client.form_type === 'quick-life-insurance' ? 'Life Insurance' :
+                         client.form_type === 'quick-mortgage' ? 'Mortgage' :
+                         client.form_template?.name || 'Standard'}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -776,7 +794,7 @@ export default function Clients() {
                   <TableCell className="hidden lg:table-cell text-app-muted">
                     {formatDistanceToNow(new Date(client.last_activity), { addSuffix: true })}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="text-app-muted hover:text-app-foreground">
@@ -784,7 +802,10 @@ export default function Clients() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-app-card border-app">
-                        <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
+                        <DropdownMenuItem 
+                          className="text-app-foreground hover:bg-app-muted cursor-pointer"
+                          onClick={() => router.push(`/dashboard/clients/${client.id}`)}
+                        >
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>

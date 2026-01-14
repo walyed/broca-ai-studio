@@ -13,7 +13,6 @@ import {
   X,
   Coins,
   CreditCard,
-  BarChart3,
   Shield,
   UserPlus
 } from "lucide-react";
@@ -29,7 +28,6 @@ const adminSidebarItems = [
   { icon: Users, label: "Brokers", href: "/admin/brokers", badge: "24" },
   { icon: CreditCard, label: "Subscriptions", href: "/admin/subscriptions" },
   { icon: Coins, label: "Tokens", href: "/admin/tokens" },
-  { icon: BarChart3, label: "Analytics", href: "/admin/analytics" },
   { icon: Settings, label: "Settings", href: "/admin/settings" },
 ];
 

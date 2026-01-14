@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { useDocuments, useDeleteDocument } from "@/lib/hooks/use-database";
+import { useDocuments, useDeleteDocument, useUpdateDocument } from "@/lib/hooks/use-database";
 import type { DocumentType, DocumentStatus } from "@/lib/types/database";
 import { toast } from "sonner";
 
@@ -79,14 +79,16 @@ export default function Documents() {
 
   const { data: documents = [], isLoading } = useDocuments();
   const deleteDocument = useDeleteDocument();
+  const updateDocument = useUpdateDocument();
 
   const filteredDocuments = documents.filter(doc => {
     const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (doc.client?.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (doc.deal_name || "").toLowerCase().includes(searchQuery.toLowerCase());
+      (doc.client?.name || "").toLowerCase().includes(searchQuery.toLowerCase());
     
     if (activeTab === "all") return matchesSearch;
-    return matchesSearch && doc.type === activeTab;
+    if (activeTab === "verified") return matchesSearch && doc.status === "verified";
+    if (activeTab === "pending") return matchesSearch && doc.status === "pending";
+    return matchesSearch;
   });
 
   const handleDeleteDocument = async (id: string) => {
@@ -95,6 +97,45 @@ export default function Documents() {
       toast.success("Document deleted successfully");
     } catch {
       toast.error("Failed to delete document");
+    }
+  };
+
+  const handleVerifyDocument = async (id: string) => {
+    try {
+      await updateDocument.mutateAsync({ id, status: "verified" as DocumentStatus });
+      toast.success("Document marked as verified");
+    } catch {
+      toast.error("Failed to verify document");
+    }
+  };
+
+  const handleViewDocument = (fileUrl: string | null | undefined) => {
+    if (fileUrl) {
+      window.open(fileUrl, "_blank");
+    } else {
+      toast.error("Document URL not available");
+    }
+  };
+
+  const handleDownloadDocument = async (fileUrl: string | null | undefined, fileName: string) => {
+    if (!fileUrl) {
+      toast.error("Download URL not available");
+      return;
+    }
+    try {
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success("Download started");
+    } catch {
+      toast.error("Failed to download document");
     }
   };
 
@@ -159,7 +200,7 @@ export default function Documents() {
       }
     >
       {/* Stats Cards */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-3 gap-4">
         <div className="app-card p-5">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -197,19 +238,6 @@ export default function Documents() {
             </div>
           </div>
         </div>
-        <div className="app-card p-5">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-              <FileText className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-app-foreground">
-                {documents.filter(d => d.type === "contract").length}
-              </p>
-              <p className="text-sm text-app-muted">Contracts</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Tabs, Search, and View Toggle */}
@@ -218,10 +246,8 @@ export default function Documents() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="bg-app-muted flex-wrap h-auto">
               <TabsTrigger value="all" className="data-[state=active]:bg-app-card data-[state=active]:text-app-foreground text-app-muted-foreground">All</TabsTrigger>
-              <TabsTrigger value="contract" className="data-[state=active]:bg-app-card data-[state=active]:text-app-foreground text-app-muted-foreground">Contracts</TabsTrigger>
-              <TabsTrigger value="id" className="data-[state=active]:bg-app-card data-[state=active]:text-app-foreground text-app-muted-foreground">ID Documents</TabsTrigger>
-              <TabsTrigger value="financial" className="data-[state=active]:bg-app-card data-[state=active]:text-app-foreground text-app-muted-foreground">Financial</TabsTrigger>
-              <TabsTrigger value="property" className="data-[state=active]:bg-app-card data-[state=active]:text-app-foreground text-app-muted-foreground">Property</TabsTrigger>
+              <TabsTrigger value="verified" className="data-[state=active]:bg-app-card data-[state=active]:text-app-foreground text-app-muted-foreground">Verified</TabsTrigger>
+              <TabsTrigger value="pending" className="data-[state=active]:bg-app-card data-[state=active]:text-app-foreground text-app-muted-foreground">Pending</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="flex gap-3 w-full lg:w-auto">
@@ -279,15 +305,33 @@ export default function Documents() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-app-card border-app">
-                      <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
+                      <DropdownMenuItem 
+                        className="text-app-foreground hover:bg-app-muted cursor-pointer"
+                        onClick={() => handleViewDocument(doc.file_url)}
+                      >
                         <Eye className="w-4 h-4 mr-2" />
                         View
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
+                      <DropdownMenuItem 
+                        className="text-app-foreground hover:bg-app-muted cursor-pointer"
+                        onClick={() => handleDownloadDocument(doc.file_url, doc.name)}
+                      >
                         <Download className="w-4 h-4 mr-2" />
                         Download
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
+                      {doc.status !== "verified" && (
+                        <DropdownMenuItem 
+                          className="text-green-600 hover:bg-green-50 cursor-pointer"
+                          onClick={() => handleVerifyDocument(doc.id)}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Mark as Verified
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem 
+                        className="text-app-foreground hover:bg-app-muted cursor-pointer"
+                        onClick={() => toast.info("AI Summary feature coming soon")}
+                      >
                         <Sparkles className="w-4 h-4 mr-2" />
                         AI Summary
                       </DropdownMenuItem>
@@ -304,10 +348,6 @@ export default function Documents() {
 
                 {/* Badges */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge variant="outline" className={`${typeConfig[doc.type].color} border text-xs`}>
-                    <TypeIcon className="w-3 h-3 mr-1" />
-                    {typeConfig[doc.type].label}
-                  </Badge>
                   <Badge variant="outline" className={`${statusConfig[doc.status].color} border text-xs`}>
                     <StatusIcon className="w-3 h-3 mr-1" />
                     {statusConfig[doc.status].label}
@@ -356,9 +396,6 @@ export default function Documents() {
                     </div>
                   </div>
                   <div className="hidden md:flex items-center gap-2">
-                    <Badge variant="outline" className={`${typeConfig[doc.type].color} border text-xs`}>
-                      {typeConfig[doc.type].label}
-                    </Badge>
                     <Badge variant="outline" className={`${statusConfig[doc.status].color} border text-xs`}>
                       <StatusIcon className="w-3 h-3 mr-1" />
                       {statusConfig[doc.status].label}
@@ -372,15 +409,33 @@ export default function Documents() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-app-card border-app">
-                      <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
+                      <DropdownMenuItem 
+                        className="text-app-foreground hover:bg-app-muted cursor-pointer"
+                        onClick={() => handleViewDocument(doc.file_url)}
+                      >
                         <Eye className="w-4 h-4 mr-2" />
                         View
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
+                      <DropdownMenuItem 
+                        className="text-app-foreground hover:bg-app-muted cursor-pointer"
+                        onClick={() => handleDownloadDocument(doc.file_url, doc.name)}
+                      >
                         <Download className="w-4 h-4 mr-2" />
                         Download
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-app-foreground hover:bg-app-muted cursor-pointer">
+                      {doc.status !== "verified" && (
+                        <DropdownMenuItem 
+                          className="text-green-600 hover:bg-green-50 cursor-pointer"
+                          onClick={() => handleVerifyDocument(doc.id)}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Mark as Verified
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem 
+                        className="text-app-foreground hover:bg-app-muted cursor-pointer"
+                        onClick={() => toast.info("AI Summary feature coming soon")}
+                      >
                         <Sparkles className="w-4 h-4 mr-2" />
                         AI Summary
                       </DropdownMenuItem>

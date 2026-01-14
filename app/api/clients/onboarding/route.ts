@@ -17,12 +17,13 @@ export async function POST(request: NextRequest) {
       clientPhone,
       clientNotes,
       formTemplateId, 
+      formType,
       formName,
       brokerId,
       sendEmail = true 
     } = await request.json();
 
-    console.log('Creating client onboarding for:', clientEmail);
+    console.log('Creating client onboarding for:', clientEmail, 'Form type:', formType, 'Template ID:', formTemplateId);
 
     if (!clientEmail || !clientName) {
       return NextResponse.json({ error: 'Client name and email are required' }, { status: 400 });
@@ -53,64 +54,43 @@ export async function POST(request: NextRequest) {
     // Generate a unique onboarding token for the client
     const onboardingToken = randomBytes(32).toString('hex');
 
-    // Check if client already exists for this broker
-    const { data: existingClient } = await supabase
+    // Determine required documents based on form type
+    const getRequiredDocsCount = (type: string | null): number => {
+      if (type === 'quick-mortgage' || type === 'mortgage') return 5; // ID + pay stubs + tax returns + bank statements + W2
+      if (type === 'quick-real-estate' || type === 'real-estate') return 3; // ID + pre-approval (optional) + proof of funds (optional)
+      if (type === 'quick-life-insurance' || type === 'life-insurance') return 3; // ID + medical records (optional) + current policy (optional)
+      return 1; // Default: just ID
+    };
+
+    const documentsRequired = getRequiredDocsCount(formType);
+
+    // Always create a new client record for each form submission
+    // This preserves history - each onboarding form sent is a separate entry
+    const { data: newClient, error: createError } = await supabase
       .from('clients')
-      .select('id')
-      .eq('broker_id', brokerId)
-      .eq('email', clientEmail)
-      .maybeSingle();
+      .insert({
+        broker_id: brokerId,
+        name: clientName,
+        email: clientEmail,
+        phone: clientPhone || null,
+        notes: clientNotes || null,
+        status: 'pending',
+        onboarding_token: onboardingToken,
+        form_template_id: formTemplateId || null,
+        form_type: formType || null,
+        onboarding_progress: 0,
+        documents_submitted: 0,
+        documents_required: documentsRequired,
+      })
+      .select()
+      .single();
 
-    let client;
-
-    if (existingClient) {
-      // Update existing client with new onboarding token
-      const { data: updatedClient, error: updateError } = await supabase
-        .from('clients')
-        .update({
-          name: clientName,
-          phone: clientPhone || null,
-          notes: clientNotes || null,
-          status: 'pending',
-          onboarding_token: onboardingToken,
-          form_template_id: formTemplateId || null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existingClient.id)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error('Update error:', updateError);
-        return NextResponse.json({ error: `Database error: ${updateError.message}` }, { status: 500 });
-      }
-      client = updatedClient;
-    } else {
-      // Create new client
-      const { data: newClient, error: createError } = await supabase
-        .from('clients')
-        .insert({
-          broker_id: brokerId,
-          name: clientName,
-          email: clientEmail,
-          phone: clientPhone || null,
-          notes: clientNotes || null,
-          status: 'pending',
-          onboarding_token: onboardingToken,
-          form_template_id: formTemplateId || null,
-          onboarding_progress: 0,
-          documents_submitted: 0,
-          documents_required: 5,
-        })
-        .select()
-        .single();
-
-      if (createError) {
-        console.error('Create error:', createError);
-        return NextResponse.json({ error: `Database error: ${createError.message}` }, { status: 500 });
-      }
-      client = newClient;
+    if (createError) {
+      console.error('Create error:', createError);
+      return NextResponse.json({ error: `Database error: ${createError.message}` }, { status: 500 });
     }
+    
+    const client = newClient;
 
     console.log('Client created/updated:', client.id);
 

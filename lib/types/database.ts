@@ -78,6 +78,14 @@ export interface Client {
   last_activity: string;
   created_at: string;
   updated_at: string;
+  // Onboarding fields
+  onboarding_token?: string | null;
+  form_template_id?: string | null;
+  form_type?: string | null;
+  form_data?: Record<string, unknown> | null;
+  ai_extracted_data?: Record<string, unknown> | null;
+  // Joined data
+  form_template?: { id: string; name: string; category?: string; fields?: unknown[] } | null;
 }
 
 // Document
@@ -94,6 +102,10 @@ export interface Document {
   deal_name: string | null;
   created_at: string;
   updated_at: string;
+  // Additional fields
+  file_url?: string | null;
+  document_type?: string | null;
+  ai_extracted_data?: Record<string, unknown> | null;
   // Joined data
   client?: Client;
 }

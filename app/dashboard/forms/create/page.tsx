@@ -7,6 +7,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import RealEstateFormBuilder from "@/components/forms/RealEstateFormBuilder";
 import LifeInsuranceFormBuilder from "@/components/forms/LifeInsuranceFormBuilder";
 import MortgageFormBuilder from "@/components/forms/MortgageFormBuilder";
+import BlankFormBuilder from "@/components/forms/BlankFormBuilder";
 import { useCreateFormTemplate } from "@/lib/hooks/use-database";
 import { toast } from "sonner";
 import type { FormStatus, FormCategory } from "@/lib/types/database";
@@ -31,14 +32,14 @@ function CreateFormContent() {
       const baseFieldsCount = (formData.sections as Array<{ fields: unknown[] }>).reduce(
         (acc, section) => acc + section.fields.length, 0
       );
-      const totalFields = baseFieldsCount + formData.customFields.length;
+      const totalFields = baseFieldsCount + (formData.customFields as unknown[]).length;
 
       // Store form structure as array with single config object
       const formStructure = [{
         baseSections: formData.sections,
         customFields: formData.customFields,
         requiredDocuments: formData.requiredDocuments,
-        templateType: templateType || "custom",
+        templateType: templateType || "blank",
       }];
 
       await createForm.mutateAsync({
@@ -73,9 +74,15 @@ function CreateFormContent() {
           />
         );
       case "real-estate-intake":
-      default:
         return (
           <RealEstateFormBuilder 
+            onSave={(data) => handleSave(data, "general")} 
+          />
+        );
+      case "blank":
+      default:
+        return (
+          <BlankFormBuilder 
             onSave={(data) => handleSave(data, "general")} 
           />
         );
@@ -100,10 +107,11 @@ function CreateFormContent() {
           title: "Real Estate Lead Intake Form",
           subtitle: "Customize the standard lead intake form with your own questions and document requirements"
         };
+      case "blank":
       default:
         return {
-          title: "Create Form Template",
-          subtitle: "Build a custom form template for client onboarding"
+          title: "Create Custom Form",
+          subtitle: "Build your own form from scratch with custom questions and document requirements"
         };
     }
   };

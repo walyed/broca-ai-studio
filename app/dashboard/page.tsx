@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/supabase/auth-context";
@@ -46,7 +46,7 @@ const sidebarItems = [
   { icon: Settings, label: "Settings", href: "/dashboard/settings" },
 ];
 
-export default function Dashboard() {
+function DashboardContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const pathname = usePathname();
@@ -407,5 +407,17 @@ export default function Dashboard() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-app flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }

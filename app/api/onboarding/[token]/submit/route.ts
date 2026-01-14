@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { sendClientOnboardingCompleteEmail } from '@/lib/email/resend';
 
 // Use service role for operations
 const supabase = createClient(
@@ -69,8 +70,13 @@ export async function POST(
 
     for (const { key, file } of documentEntries) {
       try {
+        // Sanitize filename - remove special characters and spaces
+        const sanitizedFileName = file.name
+          .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace special chars with underscore
+          .replace(/_+/g, '_'); // Remove multiple consecutive underscores
+        
         // Upload to Supabase Storage
-        const fileName = `${client.id}/${Date.now()}_${file.name}`;
+        const fileName = `${client.id}/${Date.now()}_${sanitizedFileName}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('documents')
           .upload(fileName, file);
@@ -85,19 +91,26 @@ export async function POST(
           .from('documents')
           .getPublicUrl(fileName);
 
+        // Map MIME type to allowed file_type values
+        const getFileType = (mimeType: string): 'pdf' | 'image' | 'doc' => {
+          if (mimeType.startsWith('image/')) return 'image';
+          if (mimeType === 'application/pdf') return 'pdf';
+          return 'doc';
+        };
+
         // Create document record in database
         const { data: docRecord, error: docError } = await supabase
           .from('documents')
           .insert({
             client_id: client.id,
             broker_id: client.broker_id,
-            name: file.name,
-            file_path: fileName,
+            name: file.name, // Keep original name for display
+            file_path: fileName, // Sanitized path
             file_url: urlData.publicUrl,
-            file_type: file.type,
-            file_size: file.size,
+            file_type: getFileType(file.type),
+            file_size: String(file.size),
             document_type: key,
-            status: 'processing',
+            status: 'pending',
           })
           .select()
           .single();
@@ -212,36 +225,62 @@ export async function POST(
       })
       .eq('id', client.id);
 
-    // Deduct tokens from broker (10 tokens for onboarding + 5 per document scanned)
-    const tokensUsed = 10 + (documentEntries.length * 5);
+    // Deduct tokens using RPC function
+    // Token costs: 5 tokens for form submission + 10 tokens per AI document scan
+    const aiScannedDocs = Object.keys(extractedData).length;
+    const onboardingTokenCost = 5;
+    const aiScanTokenCost = aiScannedDocs * 10;
     
-    const { data: subscription } = await supabase
-      .from('broker_subscriptions')
-      .select('tokens_remaining, tokens_used')
-      .eq('broker_id', client.broker_id)
-      .single();
-
-    if (subscription) {
-      await supabase
-        .from('broker_subscriptions')
-        .update({
-          tokens_remaining: Math.max(0, (subscription.tokens_remaining || 0) - tokensUsed),
-          tokens_used: (subscription.tokens_used || 0) + tokensUsed,
-        })
-        .eq('broker_id', client.broker_id);
-
-      // Record token transaction
-      await supabase
-        .from('token_transactions')
-        .insert({
-          broker_id: client.broker_id,
-          amount: -tokensUsed,
-          action_type: 'onboarding',
-          description: `Client onboarding: ${client.name} (${uploadedDocs.length} documents scanned)`,
-        });
+    // Deduct onboarding tokens
+    if (onboardingTokenCost > 0) {
+      await supabase.rpc('deduct_tokens', {
+        p_broker_id: client.broker_id,
+        p_amount: onboardingTokenCost,
+        p_action_type: 'onboarding',
+        p_description: `Client onboarding: ${client.name}`,
+      });
     }
+    
+    // Deduct AI scan tokens (separate transaction for clarity)
+    if (aiScanTokenCost > 0) {
+      await supabase.rpc('deduct_tokens', {
+        p_broker_id: client.broker_id,
+        p_amount: aiScanTokenCost,
+        p_action_type: 'ai_scan',
+        p_description: `AI document scanning: ${aiScannedDocs} documents for ${client.name}`,
+      });
+    }
+    
+    const totalTokensUsed = onboardingTokenCost + aiScanTokenCost;
 
-    console.log(`Onboarding completed for client ${client.id}. Documents processed: ${uploadedDocs.length}`);
+    console.log(`Onboarding completed for client ${client.id}. Documents processed: ${uploadedDocs.length}. Tokens used: ${totalTokensUsed}`);
+
+    // Send notification email to broker
+    try {
+      // Get broker details
+      const { data: broker } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', client.broker_id)
+        .single();
+
+      if (broker?.email) {
+        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        await sendClientOnboardingCompleteEmail({
+          to: broker.email,
+          brokerName: broker.full_name || 'there',
+          clientName: client.name,
+          clientEmail: client.email,
+          documentsCount: uploadedDocs.length,
+          hasAiExtraction: Object.keys(extractedData).length > 0,
+          clientViewUrl: `${APP_URL}/dashboard/clients/${client.id}`,
+        });
+        console.log('Broker notification email sent to:', broker.email);
+      }
+    } catch (emailError) {
+      console.error('Failed to send broker notification:', emailError);
+      // Don't fail the request if email fails
+    }
 
     return NextResponse.json({
       success: true,

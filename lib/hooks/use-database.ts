@@ -136,13 +136,61 @@ export function useClients() {
 
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select(`
+          *,
+          form_template:form_templates(id, name, category)
+        `)
         .eq('broker_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as Client[];
     },
+  });
+}
+
+// Fetch a single client with all their documents
+export function useClientDetails(clientId: string | null) {
+  return useQuery({
+    queryKey: ['client-details', clientId],
+    queryFn: async () => {
+      if (!clientId) return null;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      // Fetch client with form template
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .select(`
+          *,
+          form_template:form_templates(id, name, category, fields)
+        `)
+        .eq('id', clientId)
+        .eq('broker_id', user.id)
+        .single();
+
+      if (clientError) throw clientError;
+      if (!client) return null;
+
+      // Fetch documents for this client
+      const { data: documents, error: docsError } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
+
+      if (docsError) throw docsError;
+
+      return {
+        ...client,
+        documents: documents || [],
+      } as Client & { 
+        documents: Document[];
+        form_template?: { id: string; name: string; category: string; fields: unknown[] } | null;
+      };
+    },
+    enabled: !!clientId,
   });
 }
 
@@ -220,7 +268,8 @@ export function useCreateClientWithEmail() {
       email, 
       phone, 
       notes, 
-      formTemplateId, 
+      formTemplateId,
+      formType,
       formName,
       sendEmail = true 
     }: { 
@@ -229,6 +278,7 @@ export function useCreateClientWithEmail() {
       phone?: string; 
       notes?: string;
       formTemplateId?: string;
+      formType?: string;
       formName?: string;
       sendEmail?: boolean;
     }) => {
@@ -245,6 +295,7 @@ export function useCreateClientWithEmail() {
           clientPhone: phone,
           clientNotes: notes,
           formTemplateId,
+          formType,
           formName,
           brokerId: user.id,
           sendEmail,
@@ -413,6 +464,27 @@ export function useFormTemplates() {
   });
 }
 
+export function useFormTemplate(id: string) {
+  return useQuery({
+    queryKey: ['form-template', id],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('form_templates')
+        .select('*')
+        .eq('id', id)
+        .eq('broker_id', user.id)
+        .single();
+
+      if (error) throw error;
+      return data as FormTemplate;
+    },
+    enabled: !!id,
+  });
+}
+
 export function useCreateFormTemplate() {
   const queryClient = useQueryClient();
 
@@ -440,19 +512,20 @@ export function useUpdateFormTemplate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<FormTemplate> & { id: string }) => {
-      const { data, error } = await supabase
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Omit<FormTemplate, 'id' | 'broker_id' | 'created_at' | 'updated_at'>> }) => {
+      const { data: result, error } = await supabase
         .from('form_templates')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({ ...data, updated_at: new Date().toISOString() })
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['form-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['form-template', variables.id] });
     },
   });
 }

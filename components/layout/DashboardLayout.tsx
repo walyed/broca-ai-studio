@@ -8,7 +8,6 @@ import {
   Users, 
   FileText, 
   Sparkles, 
-  BarChart3, 
   Settings,
   Bell,
   Search,
@@ -35,7 +34,6 @@ const sidebarItems = [
   { icon: Coins, label: "Tokens", href: "/dashboard/tokens", badge: "234" },
   { icon: CreditCard, label: "Subscription", href: "/dashboard/subscription" },
   { icon: Sparkles, label: "AI Assistant", href: "/ai-assistant" },
-  { icon: BarChart3, label: "Reports", href: "/reports" },
   { icon: Settings, label: "Settings", href: "/dashboard/settings" },
 ];
 

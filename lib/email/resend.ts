@@ -326,3 +326,113 @@ export async function sendSubscriptionConfirmationEmail({
 
   return data;
 }
+
+// Send notification to broker when client completes onboarding
+export async function sendClientOnboardingCompleteEmail({
+  to,
+  brokerName,
+  clientName,
+  clientEmail,
+  documentsCount,
+  hasAiExtraction,
+  clientViewUrl,
+}: {
+  to: string;
+  brokerName: string;
+  clientName: string;
+  clientEmail: string;
+  documentsCount: number;
+  hasAiExtraction: boolean;
+  clientViewUrl: string;
+}) {
+  const { data, error } = await resend.emails.send({
+    from: `${APP_NAME} <${FROM_EMAIL}>`,
+    to: [to],
+    subject: `✅ ${clientName} completed their onboarding!`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f5;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 40px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px;">✅ Onboarding Complete!</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 20px; color: #18181b; font-size: 18px;">
+                Hi ${brokerName}! 👋
+              </p>
+              <p style="margin: 0 0 20px; color: #52525b; font-size: 16px; line-height: 1.6;">
+                Great news! <strong>${clientName}</strong> has completed their onboarding form.
+              </p>
+              
+              <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin: 0 0 24px;">
+                <h3 style="margin: 0 0 12px; color: #166534; font-size: 16px;">📋 Submission Summary</h3>
+                <table style="width: 100%;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #52525b;">Client Name:</td>
+                    <td style="padding: 8px 0; color: #18181b; font-weight: 600;">${clientName}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #52525b;">Email:</td>
+                    <td style="padding: 8px 0; color: #18181b; font-weight: 600;">${clientEmail}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #52525b;">Documents Uploaded:</td>
+                    <td style="padding: 8px 0; color: #18181b; font-weight: 600;">${documentsCount}</td>
+                  </tr>
+                  ${hasAiExtraction ? `
+                  <tr>
+                    <td style="padding: 8px 0; color: #52525b;">AI Processing:</td>
+                    <td style="padding: 8px 0; color: #16a34a; font-weight: 600;">✨ Data extracted from documents</td>
+                  </tr>
+                  ` : ''}
+                </table>
+              </div>
+              
+              <p style="margin: 0 0 30px; color: #52525b; font-size: 16px; line-height: 1.6;">
+                Click below to view all the submitted information and AI-extracted data:
+              </p>
+              
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td align="center">
+                    <a href="${clientViewUrl}" style="display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; padding: 16px 40px; border-radius: 12px;">
+                      View Client Details
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #fafafa; padding: 24px 40px; text-align: center;">
+              <p style="margin: 0; color: #71717a; font-size: 12px;">
+                This is an automated notification from ${APP_NAME}.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `,
+  });
+
+  if (error) {
+    throw new Error(`Failed to send email: ${error.message}`);
+  }
+
+  return data;
+}

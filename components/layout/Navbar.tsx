@@ -26,7 +26,6 @@ const publicNavLinks = [
 // Protected navigation - visible only after login
 const protectedNavLinks = [
   { href: "/dashboard", label: "CRM" },
-  { href: "/reports", label: "Reports" },
   { href: "/ai-assistant", label: "AI Assistant" },
 ];
 

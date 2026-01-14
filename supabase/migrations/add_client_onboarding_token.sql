@@ -9,6 +9,10 @@ ADD COLUMN IF NOT EXISTS onboarding_token TEXT UNIQUE;
 ALTER TABLE public.clients 
 ADD COLUMN IF NOT EXISTS form_template_id UUID REFERENCES public.form_templates(id) ON DELETE SET NULL;
 
+-- Add form_type column to store quick-start form type (e.g., 'quick-real-estate')
+ALTER TABLE public.clients 
+ADD COLUMN IF NOT EXISTS form_type TEXT;
+
 -- Add form_data column to store submitted form values
 ALTER TABLE public.clients 
 ADD COLUMN IF NOT EXISTS form_data JSONB;
@@ -19,6 +23,18 @@ ADD COLUMN IF NOT EXISTS ai_extracted_data JSONB;
 
 -- Create index for faster token lookups
 CREATE INDEX IF NOT EXISTS idx_clients_onboarding_token ON public.clients(onboarding_token);
+
+-- =====================================================
+-- FORM TEMPLATES TABLE UPDATES
+-- =====================================================
+
+-- Add form_type column to form_templates table
+ALTER TABLE public.form_templates 
+ADD COLUMN IF NOT EXISTS form_type TEXT DEFAULT 'quick-real-estate';
+
+-- Add form_data column to store custom form configuration
+ALTER TABLE public.form_templates 
+ADD COLUMN IF NOT EXISTS form_data JSONB;
 
 -- =====================================================
 -- DOCUMENTS TABLE UPDATES
