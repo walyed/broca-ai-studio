@@ -184,7 +184,18 @@ export async function POST(
 
             const extractedText = response.choices[0]?.message?.content || '';
             try {
-              aiExtraction = JSON.parse(extractedText);
+              // Clean up the response - remove markdown code fences if present
+              let cleanedJson = extractedText.trim();
+              if (cleanedJson.startsWith('```json')) {
+                cleanedJson = cleanedJson.slice(7);
+              } else if (cleanedJson.startsWith('```')) {
+                cleanedJson = cleanedJson.slice(3);
+              }
+              if (cleanedJson.endsWith('```')) {
+                cleanedJson = cleanedJson.slice(0, -3);
+              }
+              cleanedJson = cleanedJson.trim();
+              aiExtraction = JSON.parse(cleanedJson);
             } catch {
               aiExtraction = { raw_text: extractedText };
             }
@@ -196,8 +207,8 @@ export async function POST(
           // Handle PDF documents
           try {
             // Dynamically import pdf-parse
-            const pdfParseModule = await import('pdf-parse');
-            const pdfParse = pdfParseModule as any;
+            const pdfParseModule = await import('pdf-parse') as any;
+            const pdfParse = pdfParseModule.default || pdfParseModule;
             
             // Extract text from PDF
             const arrayBuffer = await file.arrayBuffer();
@@ -205,7 +216,14 @@ export async function POST(
             const pdfData = await pdfParse(buffer);
             const pdfText = pdfData.text as string;
 
-            // Use OpenAI to analyze the extracted text
+            if (!pdfText || pdfText.trim().length === 0) {
+              aiExtraction = { 
+                error: 'Could not extract text from PDF',
+                document_description: 'This PDF appears to be empty or contains only images/scanned content that cannot be read as text.',
+                fields_not_found: ['full_name', 'date_of_birth', 'address', 'phone_number', 'email', 'id_number', 'expiration_date', 'employer', 'income'],
+                extraction_confidence: 'low'
+              };
+            } else {
             const response = await openai.chat.completions.create({
               model: 'gpt-4o',
               messages: [
@@ -247,13 +265,30 @@ export async function POST(
 
             const extractedText = response.choices[0]?.message?.content || '';
             try {
-              aiExtraction = JSON.parse(extractedText);
+              // Clean up the response - remove markdown code fences if present
+              let cleanedJson = extractedText.trim();
+              if (cleanedJson.startsWith('```json')) {
+                cleanedJson = cleanedJson.slice(7);
+              } else if (cleanedJson.startsWith('```')) {
+                cleanedJson = cleanedJson.slice(3);
+              }
+              if (cleanedJson.endsWith('```')) {
+                cleanedJson = cleanedJson.slice(0, -3);
+              }
+              cleanedJson = cleanedJson.trim();
+              aiExtraction = JSON.parse(cleanedJson);
             } catch {
               aiExtraction = { raw_text: extractedText };
             }
+            }
           } catch (aiError) {
             console.error('PDF extraction error:', aiError);
-            aiExtraction = { error: 'Failed to extract PDF information' };
+            aiExtraction = { 
+              error: 'Failed to extract PDF information',
+              document_description: 'There was an error processing this PDF document.',
+              fields_not_found: ['full_name', 'date_of_birth', 'address', 'phone_number', 'email', 'id_number', 'expiration_date', 'employer', 'income'],
+              extraction_confidence: 'low'
+            };
           }
         }
 
