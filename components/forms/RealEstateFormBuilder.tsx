@@ -12,7 +12,10 @@ import {
   Save,
   Eye,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  List,
+  ToggleLeft,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +42,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 
 // Base Real Estate Form Questions
 const baseFormSections = [
@@ -164,11 +177,19 @@ export default function RealEstateFormBuilder({ onSave, initialData }: RealEstat
   const [requiredDocuments, setRequiredDocuments] = useState<RequiredDocument[]>(
     initialData?.requiredDocuments || defaultRequiredDocuments
   );
-  const [newFieldType, setNewFieldType] = useState<"text" | "checkbox" | "checkbox_group">("text");
-  const [newFieldLabel, setNewFieldLabel] = useState("");
-  const [newFieldOptions, setNewFieldOptions] = useState("");
+  
+  // Add Question Dialog State
+  const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
+  const [newQuestionType, setNewQuestionType] = useState<"text" | "checkbox" | "checkbox_group">("text");
+  const [newQuestionLabel, setNewQuestionLabel] = useState("");
+  const [newQuestionPlaceholder, setNewQuestionPlaceholder] = useState("");
+  const [newQuestionRequired, setNewQuestionRequired] = useState(false);
+  const [checkboxOptions, setCheckboxOptions] = useState<string[]>([""]);
+  
+  // Document Dialog State
   const [newDocName, setNewDocName] = useState("");
   const [newDocDescription, setNewDocDescription] = useState("");
+  
   const [expandedSections, setExpandedSections] = useState<string[]>(["client_type", "primary_contact"]);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -180,21 +201,54 @@ export default function RealEstateFormBuilder({ onSave, initialData }: RealEstat
     );
   };
 
+  // Add checkbox option
+  const addCheckboxOption = () => {
+    setCheckboxOptions([...checkboxOptions, ""]);
+  };
+
+  // Update checkbox option
+  const updateCheckboxOption = (index: number, value: string) => {
+    const updated = [...checkboxOptions];
+    updated[index] = value;
+    setCheckboxOptions(updated);
+  };
+
+  // Remove checkbox option
+  const removeCheckboxOption = (index: number) => {
+    if (checkboxOptions.length > 1) {
+      setCheckboxOptions(checkboxOptions.filter((_, i) => i !== index));
+    }
+  };
+
+  // Reset add question form
+  const resetAddQuestionForm = () => {
+    setNewQuestionType("text");
+    setNewQuestionLabel("");
+    setNewQuestionPlaceholder("");
+    setNewQuestionRequired(false);
+    setCheckboxOptions([""]);
+  };
+
+  // Add custom field
   const addCustomField = () => {
-    if (!newFieldLabel.trim()) return;
+    if (!newQuestionLabel.trim()) return;
 
     const newField: CustomField = {
       id: `custom_${Date.now()}`,
-      type: newFieldType,
-      label: newFieldLabel,
-      placeholder: newFieldType === "text" ? `Enter ${newFieldLabel.toLowerCase()}` : undefined,
-      options: newFieldType === "checkbox_group" ? newFieldOptions.split(",").map(o => o.trim()).filter(Boolean) : undefined,
-      required: false,
+      type: newQuestionType,
+      label: newQuestionLabel,
+      placeholder: newQuestionType === "text" ? (newQuestionPlaceholder || `Enter ${newQuestionLabel.toLowerCase()}`) : undefined,
+      options: newQuestionType === "checkbox_group" 
+        ? checkboxOptions.filter(o => o.trim() !== "") 
+        : newQuestionType === "checkbox" 
+          ? ["Yes"]
+          : undefined,
+      required: newQuestionRequired,
     };
 
     setCustomFields([...customFields, newField]);
-    setNewFieldLabel("");
-    setNewFieldOptions("");
+    resetAddQuestionForm();
+    setIsAddQuestionOpen(false);
   };
 
   const removeCustomField = (id: string) => {
@@ -357,47 +411,231 @@ export default function RealEstateFormBuilder({ onSave, initialData }: RealEstat
 
       {/* Custom Questions */}
       <Card className="bg-app-card border-app">
-        <CardHeader>
-          <CardTitle className="text-app-foreground flex items-center gap-2">
-            <Plus className="w-5 h-5 text-accent" />
-            Custom Questions
-          </CardTitle>
-          <CardDescription className="text-app-muted">
-            Add your own questions to the form
-          </CardDescription>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-app-foreground flex items-center gap-2 text-xl">
+                <Plus className="w-5 h-5 text-accent" />
+                Custom Questions
+              </CardTitle>
+              <CardDescription className="text-app-muted mt-1">
+                Add your own questions to the form
+              </CardDescription>
+            </div>
+            <Dialog open={isAddQuestionOpen} onOpenChange={setIsAddQuestionOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-accent hover:bg-accent/90 text-white">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Question
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg bg-app-card border-app max-h-[85vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="text-app-foreground">Add New Question</DialogTitle>
+                  <DialogDescription className="text-app-muted">
+                    Choose a question type and configure it
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-6 py-4 overflow-y-auto flex-1 pr-2">
+                  {/* Question Type Selection */}
+                  <div className="space-y-3">
+                    <Label className="text-app-foreground font-medium">Question Type</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setNewQuestionType("text")}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          newQuestionType === "text"
+                            ? "border-primary bg-primary/10"
+                            : "border-app hover:border-primary/50"
+                        }`}
+                      >
+                        <TextCursor className={`w-6 h-6 mx-auto mb-2 ${newQuestionType === "text" ? "text-primary" : "text-app-muted"}`} />
+                        <p className={`text-sm font-medium ${newQuestionType === "text" ? "text-primary" : "text-app-foreground"}`}>
+                          Text Field
+                        </p>
+                        <p className="text-xs text-app-muted mt-1">Short answer</p>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setNewQuestionType("checkbox")}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          newQuestionType === "checkbox"
+                            ? "border-primary bg-primary/10"
+                            : "border-app hover:border-primary/50"
+                        }`}
+                      >
+                        <ToggleLeft className={`w-6 h-6 mx-auto mb-2 ${newQuestionType === "checkbox" ? "text-primary" : "text-app-muted"}`} />
+                        <p className={`text-sm font-medium ${newQuestionType === "checkbox" ? "text-primary" : "text-app-foreground"}`}>
+                          Yes/No
+                        </p>
+                        <p className="text-xs text-app-muted mt-1">Single toggle</p>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setNewQuestionType("checkbox_group")}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          newQuestionType === "checkbox_group"
+                            ? "border-primary bg-primary/10"
+                            : "border-app hover:border-primary/50"
+                        }`}
+                      >
+                        <List className={`w-6 h-6 mx-auto mb-2 ${newQuestionType === "checkbox_group" ? "text-primary" : "text-app-muted"}`} />
+                        <p className={`text-sm font-medium ${newQuestionType === "checkbox_group" ? "text-primary" : "text-app-foreground"}`}>
+                          Multiple Choice
+                        </p>
+                        <p className="text-xs text-app-muted mt-1">Select many</p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Question Label */}
+                  <div className="space-y-2">
+                    <Label className="text-app-foreground">Question Text</Label>
+                    <Input
+                      value={newQuestionLabel}
+                      onChange={(e) => setNewQuestionLabel(e.target.value)}
+                      className="bg-app-muted border-app text-app-foreground"
+                      placeholder="e.g., What is your preferred contact time?"
+                    />
+                  </div>
+
+                  {/* Placeholder for text fields */}
+                  {newQuestionType === "text" && (
+                    <div className="space-y-2">
+                      <Label className="text-app-foreground">Placeholder Text (Optional)</Label>
+                      <Input
+                        value={newQuestionPlaceholder}
+                        onChange={(e) => setNewQuestionPlaceholder(e.target.value)}
+                        className="bg-app-muted border-app text-app-foreground"
+                        placeholder="e.g., Enter your answer here..."
+                      />
+                    </div>
+                  )}
+
+                  {/* Options for checkbox group */}
+                  {newQuestionType === "checkbox_group" && (
+                    <div className="space-y-3">
+                      <Label className="text-app-foreground">Answer Options</Label>
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                        {checkboxOptions.map((option, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex-shrink-0">
+                              {index + 1}
+                            </div>
+                            <Input
+                              value={option}
+                              onChange={(e) => updateCheckboxOption(index, e.target.value)}
+                              className="bg-app-muted border-app text-app-foreground flex-1"
+                              placeholder={`Option ${index + 1}`}
+                            />
+                            {checkboxOptions.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeCheckboxOption(index)}
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addCheckboxOption}
+                        className="w-full bg-app-card border-app text-app-foreground hover:bg-app-muted"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Another Option
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Required toggle */}
+                  <div className="flex items-center justify-between p-4 bg-app-muted rounded-lg">
+                    <div>
+                      <Label className="text-app-foreground font-medium">Required Question</Label>
+                      <p className="text-xs text-app-muted mt-1">Client must answer this question</p>
+                    </div>
+                    <Switch
+                      checked={newQuestionRequired}
+                      onCheckedChange={setNewQuestionRequired}
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      resetAddQuestionForm();
+                      setIsAddQuestionOpen(false);
+                    }}
+                    className="bg-app-card border-app text-app-foreground hover:bg-app-muted"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={addCustomField}
+                    disabled={!newQuestionLabel.trim()}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    Add Question
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Existing Custom Fields */}
-          {customFields.length > 0 && (
-            <div className="space-y-2 mb-4">
+        <CardContent>
+          {customFields.length === 0 ? (
+            <div className="text-center py-8 border-2 border-dashed border-app rounded-lg">
+              <Plus className="w-8 h-8 text-app-muted mx-auto mb-2" />
+              <p className="text-app-muted">No custom questions added yet</p>
+              <p className="text-sm text-app-muted mt-1">Click "Add Question" to create your first custom field</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
               {customFields.map((field) => (
                 <div
                   key={field.id}
                   className="flex items-center justify-between p-3 rounded-lg border border-app bg-app-muted/30"
                 >
-                  <div className="flex items-center gap-3">
-                    {field.type === "checkbox_group" || field.type === "checkbox" ? (
-                      <CheckSquare className="w-4 h-4 text-accent" />
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {field.type === "checkbox_group" ? (
+                      <List className="w-4 h-4 text-accent flex-shrink-0" />
+                    ) : field.type === "checkbox" ? (
+                      <ToggleLeft className="w-4 h-4 text-accent flex-shrink-0" />
                     ) : (
-                      <TextCursor className="w-4 h-4 text-accent" />
+                      <TextCursor className="w-4 h-4 text-accent flex-shrink-0" />
                     )}
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-app-foreground">{field.label}</p>
                       {field.type === "checkbox_group" && field.options && (
-                        <p className="text-xs text-app-muted">
+                        <p className="text-xs text-app-muted truncate">
                           Options: {field.options.join(", ")}
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {field.required && (
+                      <Badge variant="secondary" className="text-xs">Required</Badge>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => toggleFieldRequired(field.id)}
-                      className={field.required ? "text-destructive" : "text-app-muted"}
+                      className="text-app-muted hover:text-app-foreground"
                     >
-                      {field.required ? "Required" : "Optional"}
+                      {field.required ? "Make Optional" : "Make Required"}
                     </Button>
                     <Button
                       variant="ghost"
@@ -412,56 +650,6 @@ export default function RealEstateFormBuilder({ onSave, initialData }: RealEstat
               ))}
             </div>
           )}
-
-          {/* Add New Custom Field */}
-          <div className="p-4 rounded-lg border border-dashed border-app bg-app-muted/20">
-            <h4 className="font-medium text-app-foreground mb-3">Add New Question</h4>
-            <div className="grid gap-3">
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-app-foreground text-sm">Question Type</Label>
-                  <Select value={newFieldType} onValueChange={(v: "text" | "checkbox" | "checkbox_group") => setNewFieldType(v)}>
-                    <SelectTrigger className="bg-app-muted border-app text-app-foreground">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-app-card border-app">
-                      <SelectItem value="text">Text Input</SelectItem>
-                      <SelectItem value="checkbox">Single Checkbox</SelectItem>
-                      <SelectItem value="checkbox_group">Multiple Choice</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-app-foreground text-sm">Question Label</Label>
-                  <Input
-                    value={newFieldLabel}
-                    onChange={(e) => setNewFieldLabel(e.target.value)}
-                    placeholder="e.g., Budget Range"
-                    className="bg-app-muted border-app text-app-foreground"
-                  />
-                </div>
-              </div>
-              {newFieldType === "checkbox_group" && (
-                <div className="space-y-2">
-                  <Label className="text-app-foreground text-sm">Options (comma-separated)</Label>
-                  <Input
-                    value={newFieldOptions}
-                    onChange={(e) => setNewFieldOptions(e.target.value)}
-                    placeholder="e.g., Under $500k, $500k-$1M, Over $1M"
-                    className="bg-app-muted border-app text-app-foreground"
-                  />
-                </div>
-              )}
-              <Button
-                onClick={addCustomField}
-                disabled={!newFieldLabel.trim()}
-                className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Question
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
