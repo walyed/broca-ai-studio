@@ -142,11 +142,14 @@ CREATE TABLE IF NOT EXISTS public.documents (
   client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   type TEXT DEFAULT 'other' CHECK (type IN ('contract', 'id', 'financial', 'property', 'other')),
-  status TEXT DEFAULT 'pending' CHECK (status IN ('verified', 'pending', 'rejected')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('verified', 'pending', 'rejected', 'completed')),
   file_path TEXT,
   file_type TEXT DEFAULT 'pdf' CHECK (file_type IN ('pdf', 'image', 'doc')),
   file_size TEXT,
+  file_url TEXT,
+  document_type TEXT,
   deal_name TEXT,
+  ai_extracted_data JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
