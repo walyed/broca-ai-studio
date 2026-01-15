@@ -134,13 +134,111 @@ const formatLabel = (key: string, labelMap?: Record<string, string>): string => 
     .trim();
 };
 
-// Helper to format field values
-const formatValue = (value: unknown): string => {
+// Helper to format simple field values (for form data)
+const formatSimpleValue = (value: unknown): string => {
   if (value === null || value === undefined) return 'N/A';
   if (Array.isArray(value)) return value.join(', ');
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
+};
+
+// Check if a value is a complex object that needs special rendering
+const isComplexValue = (value: unknown): boolean => {
+  if (value === null || value === undefined) return false;
+  if (Array.isArray(value)) return false;
+  if (typeof value === 'object') return true;
+  return false;
+};
+
+// Component to render complex AI extraction values beautifully
+const AIValueRenderer = ({ value, fieldKey }: { value: unknown; fieldKey: string }) => {
+  if (value === null || value === undefined) {
+    return <span className="text-app-muted">N/A</span>;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return <span className="text-app-muted">None</span>;
+    }
+    return (
+      <div className="flex flex-wrap gap-1.5 mt-1">
+        {value.map((item, idx) => (
+          <Badge key={idx} variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20">
+            {String(item)}
+          </Badge>
+        ))}
+      </div>
+    );
+  }
+
+  if (typeof value === 'boolean') {
+    return <span>{value ? 'Yes' : 'No'}</span>;
+  }
+
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    
+    // Handle raw_text specifically - show as info message
+    if ('raw_text' in obj && typeof obj.raw_text === 'string') {
+      return (
+        <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="flex items-start gap-2">
+            <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-blue-700 dark:text-blue-300">{obj.raw_text}</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Handle error field specifically - show as warning
+    if ('error' in obj && typeof obj.error === 'string') {
+      return (
+        <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-amber-700 dark:text-amber-300">{obj.error}</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Handle other_info object - render as key-value list
+    if (fieldKey === 'other_info' || Object.keys(obj).length > 0) {
+      const entries = Object.entries(obj).filter(([, v]) => v !== null && v !== undefined && v !== '');
+      if (entries.length === 0) {
+        return <span className="text-app-muted">No additional information</span>;
+      }
+      return (
+        <div className="mt-2 space-y-2">
+          {entries.map(([k, v]) => (
+            <div key={k} className="p-2 bg-app rounded-lg border border-app">
+              <p className="text-xs font-medium text-app-muted uppercase tracking-wide mb-1">
+                {formatLabel(k)}
+              </p>
+              <p className="text-sm text-app-foreground break-words">
+                {typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v)}
+              </p>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Fallback for other objects
+    return (
+      <pre className="mt-2 p-2 bg-app rounded-lg border border-app text-xs overflow-auto max-h-32">
+        {JSON.stringify(obj, null, 2)}
+      </pre>
+    );
+  }
+
+  return <span>{String(value)}</span>;
+};
+
+// Legacy formatValue for backward compatibility with form data display
+const formatValue = (value: unknown): string => {
+  return formatSimpleValue(value);
 };
 
 // Get icon for field type
@@ -415,11 +513,12 @@ export default function ClientDetailPage() {
                     // Skip metadata and internal fields
                     if (['error', 'raw_text', 'document_description', 'fields_found', 'fields_not_found', 'extraction_confidence'].includes(key)) return null;
                     const FieldIcon = getFieldIcon(key);
-                    const displayValue = formatValue(value);
+                    const isComplex = isComplexValue(value);
+                    const simpleValue = !isComplex ? formatSimpleValue(value) : '';
                     return (
                       <div 
                         key={key} 
-                        className="p-4 bg-gradient-to-br from-primary/5 to-transparent rounded-xl border border-primary/20 hover:border-primary/40 transition-colors group"
+                        className={`p-4 bg-gradient-to-br from-primary/5 to-transparent rounded-xl border border-primary/20 hover:border-primary/40 transition-colors group ${isComplex ? 'md:col-span-2' : ''}`}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -431,21 +530,27 @@ export default function ClientDetailPage() {
                                 {formatLabel(key)}
                                 <Sparkles className="w-3 h-3 text-primary" />
                               </p>
-                              <p className="text-app-foreground font-medium mt-1 break-words">{displayValue}</p>
+                              {isComplex ? (
+                                <AIValueRenderer value={value} fieldKey={key} />
+                              ) : (
+                                <p className="text-app-foreground font-medium mt-1 break-words">{simpleValue}</p>
+                              )}
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                            onClick={() => copyToClipboard(displayValue, formatLabel(key), key)}
-                          >
-                            {copiedField === key ? (
-                              <Check className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <Copy className="w-4 h-4 text-app-muted" />
-                            )}
-                          </Button>
+                          {!isComplex && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                              onClick={() => copyToClipboard(simpleValue, formatLabel(key), key)}
+                            >
+                              {copiedField === key ? (
+                                <Check className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <Copy className="w-4 h-4 text-app-muted" />
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );
@@ -536,16 +641,21 @@ export default function ClientDetailPage() {
                                     // Skip metadata fields
                                     if (['error', 'raw_text', 'document_description', 'fields_found', 'fields_not_found', 'extraction_confidence'].includes(key)) return null;
                                     const FieldIcon = getFieldIcon(key);
+                                    const isComplex = isComplexValue(value);
                                     return (
                                       <div 
                                         key={key} 
-                                        className="p-3 bg-app-card rounded-lg border border-green-200/50 dark:border-green-800/50"
+                                        className={`p-3 bg-app-card rounded-lg border border-green-200/50 dark:border-green-800/50 ${isComplex ? 'md:col-span-2' : ''}`}
                                       >
                                         <div className="flex items-start gap-2">
                                           <FieldIcon className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5" />
                                           <div className="min-w-0 flex-1">
                                             <p className="text-xs text-app-muted">{formatLabel(key)}</p>
-                                            <p className="text-sm text-app-foreground font-medium break-words">{formatValue(value)}</p>
+                                            {isComplex ? (
+                                              <AIValueRenderer value={value} fieldKey={key} />
+                                            ) : (
+                                              <p className="text-sm text-app-foreground font-medium break-words">{formatSimpleValue(value)}</p>
+                                            )}
                                           </div>
                                         </div>
                                       </div>
@@ -588,16 +698,21 @@ export default function ClientDetailPage() {
                                 {Object.entries(extraction).map(([key, value]) => {
                                   if (['error', 'raw_text', 'document_description', 'fields_found', 'fields_not_found', 'extraction_confidence'].includes(key)) return null;
                                   const FieldIcon = getFieldIcon(key);
+                                  const isComplex = isComplexValue(value);
                                   return (
                                     <div 
                                       key={key} 
-                                      className="p-3 bg-app-card rounded-lg border border-app"
+                                      className={`p-3 bg-app-card rounded-lg border border-app ${isComplex ? 'md:col-span-2' : ''}`}
                                     >
                                       <div className="flex items-start gap-2">
                                         <FieldIcon className="w-4 h-4 text-primary mt-0.5" />
                                         <div className="min-w-0 flex-1">
                                           <p className="text-xs text-app-muted">{formatLabel(key)}</p>
-                                          <p className="text-sm text-app-foreground font-medium break-words">{formatValue(value)}</p>
+                                          {isComplex ? (
+                                            <AIValueRenderer value={value} fieldKey={key} />
+                                          ) : (
+                                            <p className="text-sm text-app-foreground font-medium break-words">{formatSimpleValue(value)}</p>
+                                          )}
                                         </div>
                                       </div>
                                     </div>
