@@ -51,6 +51,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 
@@ -464,34 +465,215 @@ export default function MortgageFormBuilder({ onSave, initialData }: MortgageFor
 
       {/* Custom Questions */}
       <Card className="bg-app-card border-app">
-        <CardHeader>
-          <CardTitle className="text-app-foreground flex items-center gap-2">
-            <Plus className="w-5 h-5 text-accent" />
-            Custom Questions
-          </CardTitle>
-          <CardDescription className="text-app-muted">
-            Add your own questions to the form
-          </CardDescription>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-app-foreground flex items-center gap-2 text-xl">
+                <Plus className="w-5 h-5 text-accent" />
+                Custom Questions
+              </CardTitle>
+              <CardDescription className="text-app-muted mt-1">
+                Add your own questions to the form
+              </CardDescription>
+            </div>
+            <Dialog open={isAddQuestionOpen} onOpenChange={setIsAddQuestionOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-accent hover:bg-accent/90 text-white">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Question
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg bg-app-card border-app max-h-[85vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="text-app-foreground">Add New Question</DialogTitle>
+                  <DialogDescription className="text-app-muted">
+                    Choose a question type and configure it
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-6 py-4 overflow-y-auto flex-1 pr-2">
+                  {/* Question Type Selection */}
+                  <div className="space-y-3">
+                    <Label className="text-app-foreground font-medium">Question Type</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setNewQuestionType("text")}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          newQuestionType === "text"
+                            ? "border-primary bg-primary/10"
+                            : "border-app hover:border-primary/50"
+                        }`}
+                      >
+                        <TextCursor className={`w-6 h-6 mx-auto mb-2 ${newQuestionType === "text" ? "text-primary" : "text-app-muted"}`} />
+                        <p className={`text-sm font-medium ${newQuestionType === "text" ? "text-primary" : "text-app-foreground"}`}>
+                          Text Field
+                        </p>
+                        <p className="text-xs text-app-muted mt-1">Short answer</p>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setNewQuestionType("checkbox")}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          newQuestionType === "checkbox"
+                            ? "border-primary bg-primary/10"
+                            : "border-app hover:border-primary/50"
+                        }`}
+                      >
+                        <ToggleLeft className={`w-6 h-6 mx-auto mb-2 ${newQuestionType === "checkbox" ? "text-primary" : "text-app-muted"}`} />
+                        <p className={`text-sm font-medium ${newQuestionType === "checkbox" ? "text-primary" : "text-app-foreground"}`}>
+                          Yes/No
+                        </p>
+                        <p className="text-xs text-app-muted mt-1">Single toggle</p>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setNewQuestionType("checkbox_group")}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          newQuestionType === "checkbox_group"
+                            ? "border-primary bg-primary/10"
+                            : "border-app hover:border-primary/50"
+                        }`}
+                      >
+                        <List className={`w-6 h-6 mx-auto mb-2 ${newQuestionType === "checkbox_group" ? "text-primary" : "text-app-muted"}`} />
+                        <p className={`text-sm font-medium ${newQuestionType === "checkbox_group" ? "text-primary" : "text-app-foreground"}`}>
+                          Multiple Choice
+                        </p>
+                        <p className="text-xs text-app-muted mt-1">Select many</p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Question Label */}
+                  <div className="space-y-2">
+                    <Label className="text-app-foreground">Question Text</Label>
+                    <Input
+                      value={newQuestionLabel}
+                      onChange={(e) => setNewQuestionLabel(e.target.value)}
+                      className="bg-app-muted border-app text-app-foreground"
+                      placeholder="e.g., What is your preferred contact time?"
+                    />
+                  </div>
+
+                  {/* Placeholder for text fields */}
+                  {newQuestionType === "text" && (
+                    <div className="space-y-2">
+                      <Label className="text-app-foreground">Placeholder Text (Optional)</Label>
+                      <Input
+                        value={newQuestionPlaceholder}
+                        onChange={(e) => setNewQuestionPlaceholder(e.target.value)}
+                        className="bg-app-muted border-app text-app-foreground"
+                        placeholder="e.g., Enter your answer here..."
+                      />
+                    </div>
+                  )}
+
+                  {/* Options for checkbox group */}
+                  {newQuestionType === "checkbox_group" && (
+                    <div className="space-y-3">
+                      <Label className="text-app-foreground">Answer Options</Label>
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                        {checkboxOptions.map((option, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-medium flex-shrink-0">
+                              {index + 1}
+                            </div>
+                            <Input
+                              value={option}
+                              onChange={(e) => updateCheckboxOption(index, e.target.value)}
+                              className="bg-app-muted border-app text-app-foreground flex-1"
+                              placeholder={`Option ${index + 1}`}
+                            />
+                            {checkboxOptions.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeCheckboxOption(index)}
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addCheckboxOption}
+                        className="w-full bg-app-card border-app text-app-foreground hover:bg-app-muted"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Another Option
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Required toggle */}
+                  <div className="flex items-center justify-between p-4 bg-app-muted rounded-lg">
+                    <div>
+                      <Label className="text-app-foreground font-medium">Required Question</Label>
+                      <p className="text-xs text-app-muted mt-1">Client must answer this question</p>
+                    </div>
+                    <Switch
+                      checked={newQuestionRequired}
+                      onCheckedChange={setNewQuestionRequired}
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      resetAddQuestionForm();
+                      setIsAddQuestionOpen(false);
+                    }}
+                    className="bg-app-card border-app text-app-foreground hover:bg-app-muted"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={addCustomField}
+                    disabled={!newQuestionLabel.trim()}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    Add Question
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Existing Custom Fields */}
-          {customFields.length > 0 && (
-            <div className="space-y-2 mb-4">
+        <CardContent>
+          {customFields.length === 0 ? (
+            <div className="text-center py-8 border-2 border-dashed border-app rounded-lg">
+              <Plus className="w-8 h-8 text-app-muted mx-auto mb-2" />
+              <p className="text-app-muted">No custom questions added yet</p>
+              <p className="text-sm text-app-muted mt-1">Click "Add Question" to create your first custom field</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
               {customFields.map((field) => (
                 <div
                   key={field.id}
                   className="flex items-center justify-between p-3 rounded-lg border border-app bg-app-muted/30"
                 >
-                  <div className="flex items-center gap-3">
-                    {field.type === "checkbox_group" || field.type === "checkbox" ? (
-                      <CheckSquare className="w-4 h-4 text-accent" />
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {field.type === "checkbox_group" ? (
+                      <List className="w-4 h-4 text-accent flex-shrink-0" />
+                    ) : field.type === "checkbox" ? (
+                      <ToggleLeft className="w-4 h-4 text-accent flex-shrink-0" />
                     ) : (
-                      <TextCursor className="w-4 h-4 text-accent" />
+                      <TextCursor className="w-4 h-4 text-accent flex-shrink-0" />
                     )}
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-app-foreground">{field.label}</p>
                       {field.type === "checkbox_group" && field.options && (
-                        <p className="text-xs text-app-muted">
+                        <p className="text-xs text-app-muted truncate">
                           Options: {field.options.join(", ")}
                         </p>
                       )}
@@ -519,180 +701,6 @@ export default function MortgageFormBuilder({ onSave, initialData }: MortgageFor
               ))}
             </div>
           )}
-
-          {/* Add New Question Button */}
-          <Dialog open={isAddQuestionOpen} onOpenChange={setIsAddQuestionOpen}>
-            <Button
-              onClick={() => setIsAddQuestionOpen(true)}
-              variant="outline"
-              className="w-full border-dashed border-app bg-app-muted/20 text-app-foreground hover:bg-app-muted/40"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Question
-            </Button>
-
-            <DialogContent className="bg-app-card border-app text-app-foreground max-w-2xl">
-              <DialogHeader>
-                <DialogTitle className="text-app-foreground">Add Custom Question</DialogTitle>
-                <DialogDescription className="text-app-muted">
-                  Choose a question type and provide the details
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4 py-4">
-                {/* Question Type Selection */}
-                <div className="space-y-3">
-                  <Label className="text-app-foreground text-sm font-medium">Question Type</Label>
-                  <div className="grid grid-cols-3 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setNewQuestionType("text")}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                        newQuestionType === "text"
-                          ? "border-accent bg-accent/10"
-                          : "border-app bg-app-muted/20 hover:bg-app-muted/40"
-                      }`}
-                    >
-                      <TextCursor className={`w-6 h-6 ${newQuestionType === "text" ? "text-accent" : "text-app-muted"}`} />
-                      <span className={`text-sm font-medium ${newQuestionType === "text" ? "text-accent" : "text-app-foreground"}`}>
-                        Text Input
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setNewQuestionType("checkbox")}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                        newQuestionType === "checkbox"
-                          ? "border-accent bg-accent/10"
-                          : "border-app bg-app-muted/20 hover:bg-app-muted/40"
-                      }`}
-                    >
-                      <ToggleLeft className={`w-6 h-6 ${newQuestionType === "checkbox" ? "text-accent" : "text-app-muted"}`} />
-                      <span className={`text-sm font-medium ${newQuestionType === "checkbox" ? "text-accent" : "text-app-foreground"}`}>
-                        Yes/No
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setNewQuestionType("checkbox_group")}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                        newQuestionType === "checkbox_group"
-                          ? "border-accent bg-accent/10"
-                          : "border-app bg-app-muted/20 hover:bg-app-muted/40"
-                      }`}
-                    >
-                      <List className={`w-6 h-6 ${newQuestionType === "checkbox_group" ? "text-accent" : "text-app-muted"}`} />
-                      <span className={`text-sm font-medium ${newQuestionType === "checkbox_group" ? "text-accent" : "text-app-foreground"}`}>
-                        Multiple Choice
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Question Label */}
-                <div className="space-y-2">
-                  <Label className="text-app-foreground text-sm font-medium">Question Label</Label>
-                  <Input
-                    value={newQuestionLabel}
-                    onChange={(e) => setNewQuestionLabel(e.target.value)}
-                    placeholder="e.g., HOA Fees"
-                    className="bg-app-muted border-app text-app-foreground"
-                  />
-                </div>
-
-                {/* Placeholder for Text Input */}
-                {newQuestionType === "text" && (
-                  <div className="space-y-2">
-                    <Label className="text-app-foreground text-sm font-medium">
-                      Placeholder <span className="text-app-muted font-normal">(optional)</span>
-                    </Label>
-                    <Input
-                      value={newQuestionPlaceholder}
-                      onChange={(e) => setNewQuestionPlaceholder(e.target.value)}
-                      placeholder="Enter placeholder text"
-                      className="bg-app-muted border-app text-app-foreground"
-                    />
-                  </div>
-                )}
-
-                {/* Options for Multiple Choice */}
-                {newQuestionType === "checkbox_group" && (
-                  <div className="space-y-2">
-                    <Label className="text-app-foreground text-sm font-medium">Options</Label>
-                    <div className="space-y-2">
-                      {checkboxOptions.map((option, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <Input
-                            value={option}
-                            onChange={(e) => updateCheckboxOption(index, e.target.value)}
-                            placeholder={`Option ${index + 1}`}
-                            className="bg-app-muted border-app text-app-foreground"
-                          />
-                          {checkboxOptions.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeCheckboxOption(index)}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addCheckboxOption}
-                        className="w-full border-dashed border-app bg-app-muted/20 text-app-foreground hover:bg-app-muted/40"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Option
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Required Toggle */}
-                <div className="flex items-center justify-between p-3 rounded-lg border border-app bg-app-muted/20">
-                  <div className="space-y-0.5">
-                    <Label className="text-app-foreground text-sm font-medium">Required Question</Label>
-                    <p className="text-xs text-app-muted">Make this question mandatory</p>
-                  </div>
-                  <Switch
-                    checked={newQuestionRequired}
-                    onCheckedChange={setNewQuestionRequired}
-                  />
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    resetAddQuestionForm();
-                    setIsAddQuestionOpen(false);
-                  }}
-                  className="border-app bg-app-muted/20 text-app-foreground hover:bg-app-muted/40"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={addCustomField}
-                  disabled={!newQuestionLabel.trim() || (newQuestionType === "checkbox_group" && !checkboxOptions.some(o => o.trim()))}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Question
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </CardContent>
       </Card>
 
