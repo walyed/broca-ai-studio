@@ -44,7 +44,7 @@ import { useDocuments, useDeleteDocument, useUpdateDocument } from "@/lib/hooks/
 import type { DocumentType, DocumentStatus } from "@/lib/types/database";
 import { toast } from "sonner";
 
-const typeConfig: Record<DocumentType, { label: string; color: string; icon: React.ElementType }> = {
+const typeConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   contract: { label: "Contract", color: "bg-blue-100 text-blue-700 border-blue-200", icon: FileText },
   id: { label: "ID Document", color: "bg-purple-100 text-purple-700 border-purple-200", icon: File },
   financial: { label: "Financial", color: "bg-green-100 text-green-700 border-green-200", icon: FileText },
@@ -52,10 +52,11 @@ const typeConfig: Record<DocumentType, { label: string; color: string; icon: Rea
   other: { label: "Other", color: "bg-gray-100 text-gray-700 border-gray-200", icon: File },
 };
 
-const statusConfig: Record<DocumentStatus, { label: string; color: string; icon: React.ElementType }> = {
+const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   verified: { label: "Verified", color: "bg-green-100 text-green-800 border-green-200", icon: CheckCircle },
   pending: { label: "Pending", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Clock },
   rejected: { label: "Rejected", color: "bg-red-100 text-red-800 border-red-200", icon: AlertCircle },
+  completed: { label: "Completed", color: "bg-blue-100 text-blue-800 border-blue-200", icon: CheckCircle },
 };
 
 const getFileIcon = (fileType: "pdf" | "image" | "doc") => {
@@ -289,8 +290,10 @@ export default function Documents() {
       {viewMode === "grid" ? (
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredDocuments.map((doc) => {
-            const StatusIcon = statusConfig[doc.status].icon;
-            const TypeIcon = typeConfig[doc.type].icon;
+            const statusInfo = statusConfig[doc.status] || statusConfig.pending;
+            const typeInfo = typeConfig[doc.type] || typeConfig.other;
+            const StatusIcon = statusInfo.icon;
+            const TypeIcon = typeInfo.icon;
             return (
               <div key={doc.id} className="app-card p-5 hover:shadow-lg transition-shadow">
                 {/* Header */}
@@ -348,9 +351,9 @@ export default function Documents() {
 
                 {/* Badges */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge variant="outline" className={`${statusConfig[doc.status].color} border text-xs`}>
+                  <Badge variant="outline" className={`${statusInfo.color} border text-xs`}>
                     <StatusIcon className="w-3 h-3 mr-1" />
-                    {statusConfig[doc.status].label}
+                    {statusInfo.label}
                   </Badge>
                 </div>
 
@@ -379,7 +382,8 @@ export default function Documents() {
         <div className="app-card overflow-hidden">
           <div className="divide-y divide-app">
             {filteredDocuments.map((doc) => {
-              const StatusIcon = statusConfig[doc.status].icon;
+              const statusInfo = statusConfig[doc.status] || statusConfig.pending;
+              const StatusIcon = statusInfo.icon;
               return (
                 <div key={doc.id} className="flex items-center gap-4 p-4 hover:bg-app-muted/50 transition-colors">
                   <div className="w-12 h-12 rounded-lg bg-app-muted flex items-center justify-center flex-shrink-0">
@@ -396,9 +400,9 @@ export default function Documents() {
                     </div>
                   </div>
                   <div className="hidden md:flex items-center gap-2">
-                    <Badge variant="outline" className={`${statusConfig[doc.status].color} border text-xs`}>
+                    <Badge variant="outline" className={`${statusInfo.color} border text-xs`}>
                       <StatusIcon className="w-3 h-3 mr-1" />
-                      {statusConfig[doc.status].label}
+                      {statusInfo.label}
                     </Badge>
                   </div>
                   <span className="text-sm text-app-muted hidden lg:block">{formatDate(doc.created_at)}</span>
