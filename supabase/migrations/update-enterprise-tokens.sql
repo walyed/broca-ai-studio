@@ -1,17 +1,47 @@
--- Migration: Update Enterprise plan from unlimited (-1) to 1500 tokens
+-- Migration: Update subscription plans tokens
 -- Run this in your Supabase SQL Editor
 
--- Update the Enterprise plan tokens_per_month from -1 to 1500
+-- Update the Starter plan
+UPDATE subscription_plans 
+SET 
+  tokens_per_month = 100,
+  features = '["100 AI tokens/month", "Up to 25 clients", "Email support", "Basic forms"]'
+WHERE name = 'Starter';
+
+-- Update the Professional plan (500 tokens, not 350)
+UPDATE subscription_plans 
+SET 
+  tokens_per_month = 500,
+  features = '["500 AI tokens/month", "Unlimited clients", "Priority support", "Custom forms", "Advanced analytics"]'
+WHERE name = 'Professional';
+
+-- Update the Enterprise plan (1500 tokens, not unlimited)
 UPDATE subscription_plans 
 SET 
   tokens_per_month = 1500,
   features = '["1500 AI tokens/month", "Unlimited clients", "Dedicated support", "Custom integrations", "White-label option", "API access"]'
 WHERE name = 'Enterprise';
 
--- Update any existing subscriptions on Enterprise plan to have 1500 tokens
+-- Update any existing subscriptions to have correct token amounts
+-- Starter users
 UPDATE broker_subscriptions bs
-SET 
-  tokens_remaining = 1500 - COALESCE(tokens_used, 0)
+SET tokens_remaining = GREATEST(0, 100 - COALESCE(tokens_used, 0))
+FROM subscription_plans sp
+WHERE bs.plan_id = sp.id 
+  AND sp.name = 'Starter'
+  AND bs.status = 'active';
+
+-- Professional users  
+UPDATE broker_subscriptions bs
+SET tokens_remaining = GREATEST(0, 500 - COALESCE(tokens_used, 0))
+FROM subscription_plans sp
+WHERE bs.plan_id = sp.id 
+  AND sp.name = 'Professional'
+  AND bs.status = 'active';
+
+-- Enterprise users
+UPDATE broker_subscriptions bs
+SET tokens_remaining = GREATEST(0, 1500 - COALESCE(tokens_used, 0))
 FROM subscription_plans sp
 WHERE bs.plan_id = sp.id 
   AND sp.name = 'Enterprise'
@@ -54,4 +84,4 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Verify the changes
-SELECT * FROM subscription_plans WHERE name = 'Enterprise';
+SELECT name, price, tokens_per_month, features FROM subscription_plans ORDER BY price;
