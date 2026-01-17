@@ -349,14 +349,14 @@ export default function Forms() {
 
       {/* Forms Grid */}
       <div className="max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar pr-1">
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5 pb-4">
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 pb-4">
         {filteredForms.map((form) => {
           const CategoryIcon = categoryConfig[form.category].icon;
           return (
-            <div key={form.id} className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-primary/30">
-              <div className="flex items-start justify-between mb-5">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/15 via-primary/10 to-transparent flex items-center justify-center shadow-sm">
-                  <FileText className="w-7 h-7 text-primary" />
+            <div key={form.id} className="group bg-white rounded-xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 hover:border-primary/30">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/15 via-primary/10 to-transparent flex items-center justify-center shadow-sm">
+                  <FileText className="w-6 h-6 text-primary" />
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -408,10 +408,10 @@ export default function Forms() {
                 </DropdownMenu>
               </div>
 
-              <h3 className="font-semibold text-gray-900 text-lg mb-2 group-hover:text-primary transition-colors">{form.name}</h3>
-              <p className="text-sm text-gray-500 mb-5 line-clamp-2">{form.description || "No description"}</p>
+              <h3 className="font-semibold text-gray-900 text-base mb-2 group-hover:text-primary transition-colors">{form.name}</h3>
+              <p className="text-xs text-gray-500 mb-4 line-clamp-2">{form.description || "No description"}</p>
 
-              <div className="flex flex-wrap gap-2 mb-5">
+              <div className="flex flex-wrap gap-2 mb-4">
                 <Badge variant="outline" className={`${categoryConfig[form.category].color} border text-xs font-medium px-3 py-1`}>
                   <CategoryIcon className="w-3 h-3 mr-1.5" />
                   {categoryConfig[form.category].label}

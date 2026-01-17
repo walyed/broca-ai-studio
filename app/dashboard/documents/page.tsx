@@ -289,17 +289,17 @@ export default function Documents() {
       {/* Documents Grid/List */}
       {viewMode === "grid" ? (
         <div className="max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar pr-1">
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5 pb-4">
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 pb-4">
           {filteredDocuments.map((doc) => {
             const statusInfo = statusConfig[doc.status] || statusConfig.pending;
             const typeInfo = typeConfig[doc.type] || typeConfig.other;
             const StatusIcon = statusInfo.icon;
             const TypeIcon = typeInfo.icon;
             return (
-              <div key={doc.id} className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-primary/30">
+              <div key={doc.id} className="group bg-white rounded-xl p-5 shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 hover:border-primary/30">
                 {/* Header */}
-                <div className="flex items-start justify-between mb-5">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-100/80 to-red-50 flex items-center justify-center shadow-sm">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-100/80 to-red-50 flex items-center justify-center shadow-sm">
                     {getFileIcon(doc.file_type)}
                   </div>
                   <DropdownMenu>
@@ -341,7 +341,7 @@ export default function Documents() {
                 </div>
 
                 {/* File Name */}
-                <h3 className="font-semibold text-gray-900 text-lg mb-3 line-clamp-2 group-hover:text-primary transition-colors">{doc.name}</h3>
+                <h3 className="font-semibold text-gray-900 text-base mb-3 line-clamp-2 group-hover:text-primary transition-colors">{doc.name}</h3>
 
                 {/* Badges */}
                 <div className="flex flex-wrap gap-2 mb-4">
@@ -352,7 +352,7 @@ export default function Documents() {
                 </div>
 
                 {/* Client and Deal */}
-                <div className="space-y-2.5 mb-5 text-sm">
+                <div className="space-y-2 mb-4 text-sm">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-700">Client:</span>
                     <span className="text-gray-500">{doc.client?.name || "N/A"}</span>

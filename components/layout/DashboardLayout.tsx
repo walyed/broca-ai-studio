@@ -89,9 +89,9 @@ const DashboardLayout = ({ children, title, subtitle, headerAction }: DashboardL
 
   return (
     <div className="min-h-screen bg-app flex">
-      {/* Sidebar */}
+      {/* Fixed Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50
+        fixed inset-y-0 left-0 z-50
         w-64 bg-sidebar border-r border-sidebar-border
         transform transition-transform duration-300 ease-in-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
@@ -111,7 +111,7 @@ const DashboardLayout = ({ children, title, subtitle, headerAction }: DashboardL
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 py-6 px-4 space-y-2">
+          <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto scrollbar-none">
             {sidebarItems.map((item) => (
               <Link
                 key={item.label}
@@ -165,10 +165,10 @@ const DashboardLayout = ({ children, title, subtitle, headerAction }: DashboardL
         />
       )}
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen">
-        {/* Top Header */}
-        <header className="h-20 border-b border-app bg-app-card flex items-center justify-between px-6">
+      {/* Main Content - with left margin for fixed sidebar */}
+      <main className="flex-1 flex flex-col min-h-screen lg:ml-64">
+        {/* Top Header - Fixed */}
+        <header className="sticky top-0 z-30 h-20 border-b border-app bg-app-card flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <button 
               className="lg:hidden text-app-foreground"

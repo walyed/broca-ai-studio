@@ -497,3 +497,13 @@
 .custom-scrollbar:hover {
   scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
 }
+
+/* Hidden scrollbar - completely invisible but still scrollable */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
