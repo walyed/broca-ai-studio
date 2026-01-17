@@ -172,7 +172,7 @@ function DashboardContent() {
     },
     { 
       label: "Tokens Remaining", 
-      value: subscription?.plan?.name === 'Enterprise' ? '∞' : `${stats?.tokens_remaining || 0}/${subscription?.plan?.tokens_per_month || 0}`, 
+      value: `${stats?.tokens_remaining || 0}/${subscription?.plan?.tokens_per_month || 0}`, 
       change: `${stats?.tokens_used || 0} used`, 
       icon: Coins, 
       color: "text-primary" 
@@ -194,9 +194,9 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen bg-app flex">
-      {/* Sidebar */}
+      {/* Fixed Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50
+        fixed inset-y-0 left-0 z-50
         w-64 bg-sidebar border-r border-sidebar-border
         transform transition-transform duration-300 ease-in-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
@@ -216,7 +216,7 @@ function DashboardContent() {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 py-6 px-4 space-y-2">
+          <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto custom-scrollbar">
             {sidebarItems.map((item) => (
               <Link
                 key={item.label}
@@ -233,7 +233,7 @@ function DashboardContent() {
                 <span className="font-medium flex-1">{item.label}</span>
                 {item.label === "Tokens" && subscription && (
                   <Badge className="bg-primary/20 text-primary text-xs px-2 py-0.5">
-                    {subscription.plan?.name === 'Enterprise' ? '∞' : stats?.tokens_remaining || 0}
+                    {stats?.tokens_remaining || 0}
                   </Badge>
                 )}
               </Link>
@@ -263,10 +263,10 @@ function DashboardContent() {
         />
       )}
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen">
-        {/* Top Header */}
-        <header className="h-20 border-b border-app bg-app-card flex items-center justify-between px-6">
+      {/* Main Content - with left margin for fixed sidebar */}
+      <main className="flex-1 flex flex-col min-h-screen lg:ml-64">
+        {/* Top Header - Fixed */}
+        <header className="sticky top-0 z-30 h-20 border-b border-app bg-app-card flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <button 
               className="lg:hidden text-app-foreground"

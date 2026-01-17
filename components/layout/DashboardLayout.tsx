@@ -111,7 +111,7 @@ const DashboardLayout = ({ children, title, subtitle, headerAction }: DashboardL
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto scrollbar-none">
+          <nav className="flex-1 py-6 px-4 space-y-2 overflow-y-auto custom-scrollbar">
             {sidebarItems.map((item) => (
               <Link
                 key={item.label}
