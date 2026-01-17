@@ -19,8 +19,8 @@ const BrocaLogo = ({ size = "md", showText = true, variant = "light" }: BrocaLog
     lg: "text-3xl",
   };
 
-  // Text color based on variant: white for dark sidebar, dark for light backgrounds
-  const textColor = variant === "sidebar" ? "text-white" : "text-gray-900";
+  // Text color based on variant: white for both dark sidebar and dark theme
+  const textColor = variant === "sidebar" ? "text-white" : "text-foreground";
 
   return (
     <div className="flex items-center gap-3">
