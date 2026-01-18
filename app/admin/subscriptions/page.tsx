@@ -75,6 +75,8 @@ export default function AdminSubscriptions() {
                         <Badge className={`${
                           plan.name === "Enterprise" ? "bg-accent/20 text-accent" :
                           plan.name === "Professional" ? "bg-primary/20 text-primary" :
+                          plan.name === "Starter" ? "bg-blue-100 text-blue-700" :
+                          plan.name === "Free" ? "bg-gray-100 text-gray-600" :
                           "bg-app-muted text-app-muted-foreground"
                         }`}>
                           {plan.name}
@@ -88,6 +90,8 @@ export default function AdminSubscriptions() {
                         className={`h-full rounded-full ${
                           plan.name === "Enterprise" ? "bg-accent" :
                           plan.name === "Professional" ? "bg-primary" :
+                          plan.name === "Starter" ? "bg-blue-500" :
+                          plan.name === "Free" ? "bg-gray-400" :
                           "bg-app-muted-foreground"
                         }`}
                         style={{ width: `${(plan.count / (stats?.totalActive || 1)) * 100}%` }}

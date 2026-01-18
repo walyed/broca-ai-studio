@@ -144,6 +144,8 @@ export default function AdminBrokers() {
     switch (planName) {
       case "Enterprise": return <Badge className="bg-accent/20 text-accent">{planName}</Badge>;
       case "Professional": return <Badge className="bg-primary/20 text-primary">{planName}</Badge>;
+      case "Starter": return <Badge className="bg-blue-100 text-blue-700">{planName}</Badge>;
+      case "Free": return <Badge className="bg-gray-100 text-gray-600">{planName}</Badge>;
       default: return <Badge className="bg-app-muted text-app-muted-foreground">{planName}</Badge>;
     }
   };

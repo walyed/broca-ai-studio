@@ -1,31 +1,50 @@
 -- Migration: Update subscription plans tokens
 -- Run this in your Supabase SQL Editor
 
+-- Add Free plan if it doesn't exist
+INSERT INTO public.subscription_plans (name, price, tokens_per_month, features) 
+VALUES ('Free', 0.00, 150, '["150 AI tokens/month", "Up to 5 clients", "Email support", "Basic forms"]')
+ON CONFLICT (name) DO UPDATE SET
+  price = 0.00,
+  tokens_per_month = 150,
+  features = '["150 AI tokens/month", "Up to 5 clients", "Email support", "Basic forms"]';
+
 -- Update the Starter plan
 UPDATE subscription_plans 
 SET 
-  tokens_per_month = 100,
-  features = '["100 AI tokens/month", "Up to 25 clients", "Email support", "Basic forms"]'
+  price = 29.00,
+  tokens_per_month = 250,
+  features = '["250 AI tokens/month", "Up to 25 clients", "Email support", "Basic forms"]'
 WHERE name = 'Starter';
 
--- Update the Professional plan (500 tokens, not 350)
+-- Update the Professional plan
 UPDATE subscription_plans 
 SET 
-  tokens_per_month = 500,
-  features = '["500 AI tokens/month", "Unlimited clients", "Priority support", "Custom forms", "Advanced analytics"]'
+  price = 99.00,
+  tokens_per_month = 1000,
+  features = '["1000 AI tokens/month", "Unlimited clients", "Priority support", "Custom forms", "Advanced analytics"]'
 WHERE name = 'Professional';
 
--- Update the Enterprise plan (1500 tokens, not unlimited)
+-- Update the Enterprise plan
 UPDATE subscription_plans 
 SET 
-  tokens_per_month = 1500,
-  features = '["1500 AI tokens/month", "Unlimited clients", "Dedicated support", "Custom integrations", "White-label option", "API access"]'
+  price = 299.00,
+  tokens_per_month = 5000,
+  features = '["5000 AI tokens/month", "Unlimited clients", "Dedicated support", "Custom integrations", "White-label option", "API access"]'
 WHERE name = 'Enterprise';
 
 -- Update any existing subscriptions to have correct token amounts
+-- Free users
+UPDATE broker_subscriptions bs
+SET tokens_remaining = GREATEST(0, 150 - COALESCE(tokens_used, 0))
+FROM subscription_plans sp
+WHERE bs.plan_id = sp.id 
+  AND sp.name = 'Free'
+  AND bs.status = 'active';
+
 -- Starter users
 UPDATE broker_subscriptions bs
-SET tokens_remaining = GREATEST(0, 100 - COALESCE(tokens_used, 0))
+SET tokens_remaining = GREATEST(0, 250 - COALESCE(tokens_used, 0))
 FROM subscription_plans sp
 WHERE bs.plan_id = sp.id 
   AND sp.name = 'Starter'
@@ -33,7 +52,7 @@ WHERE bs.plan_id = sp.id
 
 -- Professional users  
 UPDATE broker_subscriptions bs
-SET tokens_remaining = GREATEST(0, 500 - COALESCE(tokens_used, 0))
+SET tokens_remaining = GREATEST(0, 1000 - COALESCE(tokens_used, 0))
 FROM subscription_plans sp
 WHERE bs.plan_id = sp.id 
   AND sp.name = 'Professional'
@@ -41,7 +60,7 @@ WHERE bs.plan_id = sp.id
 
 -- Enterprise users
 UPDATE broker_subscriptions bs
-SET tokens_remaining = GREATEST(0, 1500 - COALESCE(tokens_used, 0))
+SET tokens_remaining = GREATEST(0, 5000 - COALESCE(tokens_used, 0))
 FROM subscription_plans sp
 WHERE bs.plan_id = sp.id 
   AND sp.name = 'Enterprise'

@@ -70,9 +70,10 @@ CREATE TABLE IF NOT EXISTS public.subscription_plans (
 
 -- Insert default plans
 INSERT INTO public.subscription_plans (name, price, tokens_per_month, features) VALUES
-  ('Starter', 29.00, 100, '["100 AI tokens/month", "Up to 25 clients", "Email support", "Basic forms"]'),
-  ('Professional', 99.00, 500, '["500 AI tokens/month", "Unlimited clients", "Priority support", "Custom forms", "Advanced analytics"]'),
-  ('Enterprise', 299.00, 1500, '["1500 AI tokens/month", "Unlimited clients", "Dedicated support", "Custom integrations", "White-label option", "API access"]')
+  ('Free', 0.00, 150, '["150 AI tokens/month", "Up to 5 clients", "Email support", "Basic forms"]'),
+  ('Starter', 29.00, 250, '["250 AI tokens/month", "Up to 25 clients", "Email support", "Basic forms"]'),
+  ('Professional', 99.00, 1000, '["1000 AI tokens/month", "Unlimited clients", "Priority support", "Custom forms", "Advanced analytics"]'),
+  ('Enterprise', 299.00, 5000, '["5000 AI tokens/month", "Unlimited clients", "Dedicated support", "Custom integrations", "White-label option", "API access"]')
 ON CONFLICT (name) DO NOTHING;
 
 -- =====================================================

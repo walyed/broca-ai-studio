@@ -118,6 +118,7 @@ export default function AdminTokens() {
                     </SelectTrigger>
                     <SelectContent className="bg-app-card border-app text-app-foreground">
                       <SelectItem value="all">All Plans</SelectItem>
+                      <SelectItem value="free">Free</SelectItem>
                       <SelectItem value="starter">Starter</SelectItem>
                       <SelectItem value="professional">Professional</SelectItem>
                       <SelectItem value="enterprise">Enterprise</SelectItem>

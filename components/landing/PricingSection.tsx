@@ -27,20 +27,54 @@ const PricingSection = () => {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto mb-16">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-16">
+          {/* Free Plan */}
+          <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <h3 className="font-display text-2xl font-bold text-background mb-2">Free</h3>
+            <p className="text-background/60 text-sm mb-6">Get started for free</p>
+            <div className="mb-2">
+              <span className="text-4xl font-bold text-background">$0</span>
+              <span className="text-background/60">/month</span>
+            </div>
+            <p className="text-primary font-medium text-sm mb-6">150 AI tokens included</p>
+            <ul className="space-y-3 mb-8">
+              <li className="flex items-center gap-2 text-background/80 text-sm">
+                <Check className="w-4 h-4 text-primary" />
+                Up to 5 active clients
+              </li>
+              <li className="flex items-center gap-2 text-background/80 text-sm">
+                <Check className="w-4 h-4 text-primary" />
+                Basic form templates
+              </li>
+              <li className="flex items-center gap-2 text-background/80 text-sm">
+                <Check className="w-4 h-4 text-primary" />
+                Email notifications
+              </li>
+              <li className="flex items-center gap-2 text-background/80 text-sm">
+                <Check className="w-4 h-4 text-primary" />
+                AI document extraction
+              </li>
+            </ul>
+            <Link href="/signup">
+              <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                Get Started Free
+              </Button>
+            </Link>
+          </div>
+
           {/* Starter Plan */}
-          <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+          <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
             <h3 className="font-display text-2xl font-bold text-background mb-2">Starter</h3>
             <p className="text-background/60 text-sm mb-6">Perfect for solo brokers</p>
             <div className="mb-2">
               <span className="text-4xl font-bold text-background">$29</span>
               <span className="text-background/60">/month</span>
             </div>
-            <p className="text-primary font-medium text-sm mb-6">100 AI tokens included</p>
+            <p className="text-primary font-medium text-sm mb-6">250 AI tokens included</p>
             <ul className="space-y-3 mb-8">
               <li className="flex items-center gap-2 text-background/80 text-sm">
                 <Check className="w-4 h-4 text-primary" />
-                Up to 10 active clients
+                Up to 25 active clients
               </li>
               <li className="flex items-center gap-2 text-background/80 text-sm">
                 <Check className="w-4 h-4 text-primary" />
@@ -63,17 +97,17 @@ const PricingSection = () => {
           </div>
 
           {/* Professional Plan - Featured */}
-          <div className="bg-background rounded-2xl p-8 shadow-xl relative overflow-hidden transform scale-105 border-2 border-primary/50">
+          <div className="bg-background rounded-2xl p-6 shadow-xl relative overflow-hidden transform scale-105 border-2 border-primary/50">
             <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-semibold px-4 py-1 rounded-bl-lg">
               MOST POPULAR
             </div>
             <h3 className="font-display text-2xl font-bold text-foreground mb-2">Professional</h3>
             <p className="text-muted-foreground text-sm mb-6">For growing teams</p>
             <div className="mb-2">
-              <span className="text-4xl font-bold text-foreground">$79</span>
+              <span className="text-4xl font-bold text-foreground">$99</span>
               <span className="text-muted-foreground">/month</span>
             </div>
-            <p className="text-primary font-medium text-sm mb-6">500 AI tokens included</p>
+            <p className="text-primary font-medium text-sm mb-6">1000 AI tokens included</p>
             <ul className="space-y-3 mb-8">
               <li className="flex items-center gap-2 text-foreground/80 text-sm">
                 <Check className="w-4 h-4 text-primary" />
@@ -104,14 +138,14 @@ const PricingSection = () => {
           </div>
 
           {/* Enterprise Plan */}
-          <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+          <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
             <h3 className="font-display text-2xl font-bold text-background mb-2">Enterprise</h3>
             <p className="text-background/60 text-sm mb-6">For large brokerages</p>
             <div className="mb-2">
-              <span className="text-4xl font-bold text-background">$199</span>
+              <span className="text-4xl font-bold text-background">$299</span>
               <span className="text-background/60">/month</span>
             </div>
-            <p className="text-primary font-medium text-sm mb-6">1500 AI tokens included</p>
+            <p className="text-primary font-medium text-sm mb-6">5000 AI tokens included</p>
             <ul className="space-y-3 mb-8">
               <li className="flex items-center gap-2 text-background/80 text-sm">
                 <Check className="w-4 h-4 text-primary" />
@@ -134,9 +168,11 @@ const PricingSection = () => {
                 Dedicated account manager
               </li>
             </ul>
-            <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-              Contact Sales
-            </Button>
+            <Link href="/signup">
+              <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                Contact Sales
+              </Button>
+            </Link>
           </div>
         </div>
 
