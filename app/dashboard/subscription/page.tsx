@@ -115,58 +115,82 @@ export default function Subscription() {
               Upgrade Plan
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-app-card border-app max-w-4xl">
+          <DialogContent className="bg-app-card border-app max-w-5xl">
             <DialogHeader>
               <DialogTitle className="text-app-foreground text-xl">Choose Your Plan</DialogTitle>
               <DialogDescription className="text-app-muted">
                 Select the plan that best fits your business needs
               </DialogDescription>
             </DialogHeader>
-            <div className="grid md:grid-cols-3 gap-4 mt-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
               {plans.map((plan) => {
                 const isCurrentPlan = plan.id === subscription?.plan_id;
                 const isPopular = plan.name === "Professional";
+                const isFree = plan.name === "Free";
+                const isEnterprise = plan.name === "Enterprise";
                 return (
                   <div 
                     key={plan.id}
-                    className={`relative p-6 rounded-xl border-2 transition-all ${
-                      isPopular 
-                        ? "border-primary bg-primary/5" 
+                    className={`relative p-4 rounded-xl border-2 transition-all ${
+                      isCurrentPlan
+                        ? "border-primary bg-primary/10"
+                        : isPopular 
+                        ? "border-primary/50 bg-primary/5" 
+                        : isFree
+                        ? "border-gray-200 bg-gray-50"
+                        : isEnterprise
+                        ? "border-accent/50 bg-accent/5"
                         : "border-app-muted/30 bg-app-muted/10 hover:border-app-muted"
                     }`}
                   >
-                    {isCurrentPlan && (
-                      <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
-                        Current Plan
+                    {isPopular && !isCurrentPlan && (
+                      <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5">
+                        Popular
                       </Badge>
                     )}
-                    <div className="text-center mb-4">
-                      <h3 className="text-lg font-semibold text-app-foreground">{plan.name}</h3>
-                      <p className="text-sm text-app-muted mt-1">{plan.tokens_per_month} tokens/month</p>
-                      <div className="mt-4">
-                        <span className="text-3xl font-bold text-app-foreground">${plan.price}</span>
-                        <span className="text-app-muted">/month</span>
+                    {isCurrentPlan && (
+                      <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-2 py-0.5">
+                        Current
+                      </Badge>
+                    )}
+                    <div className="text-center mb-3 pt-1">
+                      <h3 className={`text-base font-semibold ${isFree ? "text-gray-700" : isEnterprise ? "text-accent" : "text-app-foreground"}`}>{plan.name}</h3>
+                      <p className="text-xs text-app-muted mt-0.5">{plan.tokens_per_month} tokens/mo</p>
+                      <div className="mt-2">
+                        <span className={`text-2xl font-bold ${isFree ? "text-gray-700" : isEnterprise ? "text-accent" : "text-app-foreground"}`}>${plan.price}</span>
+                        <span className="text-app-muted text-xs">/mo</span>
                       </div>
                     </div>
-                    <ul className="space-y-2 mb-6">
-                      {(plan.features || []).map((feature: string, i: number) => (
-                        <li key={i} className="flex items-center gap-2 text-sm text-app-muted">
-                          <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                          {feature}
+                    <ul className="space-y-1.5 mb-4 min-h-[100px]">
+                      {(plan.features || []).slice(0, 4).map((feature: string, i: number) => (
+                        <li key={i} className="flex items-start gap-1.5 text-xs text-app-muted">
+                          <Check className={`w-3 h-3 mt-0.5 flex-shrink-0 ${isFree ? "text-gray-500" : isEnterprise ? "text-accent" : "text-primary"}`} />
+                          <span className="line-clamp-1">{feature}</span>
                         </li>
                       ))}
                     </ul>
                     <Button 
-                      className={`w-full ${isCurrentPlan ? "bg-app-muted text-app-muted-foreground cursor-not-allowed" : isPopular ? "bg-primary hover:bg-primary/90" : "bg-app-muted hover:bg-app-muted/80"}`}
+                      size="sm"
+                      className={`w-full text-xs h-8 ${
+                        isCurrentPlan 
+                          ? "bg-app-muted text-app-muted-foreground cursor-not-allowed" 
+                          : isFree
+                          ? "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                          : isEnterprise
+                          ? "bg-accent hover:bg-accent/90 text-accent-foreground"
+                          : isPopular 
+                          ? "bg-primary hover:bg-primary/90 text-primary-foreground" 
+                          : "bg-app-muted hover:bg-app-muted/80 text-app-foreground"
+                      }`}
                       variant={isPopular ? "default" : "secondary"}
                       disabled={isCurrentPlan || upgradingPlan === plan.id}
                       onClick={() => !isCurrentPlan && handleUpgrade(plan.id, plan.name)}
                     >
                       {upgradingPlan === plan.id ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                       ) : null}
-                      {isCurrentPlan ? "Current Plan" : upgradingPlan === plan.id ? "Processing..." : currentPlan && plan.price > currentPlan.price ? "Upgrade" : "Select"}
-                      {!isCurrentPlan && upgradingPlan !== plan.id && <ArrowRight className="w-4 h-4 ml-2" />}
+                      {isCurrentPlan ? "Current" : upgradingPlan === plan.id ? "..." : currentPlan && plan.price > currentPlan.price ? "Upgrade" : "Select"}
+                      {!isCurrentPlan && upgradingPlan !== plan.id && <ArrowRight className="w-3 h-3 ml-1" />}
                     </Button>
                   </div>
                 );
