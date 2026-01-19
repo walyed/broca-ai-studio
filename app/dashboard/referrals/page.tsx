@@ -171,7 +171,7 @@ export default function ReferralsPage() {
                     placeholder="broker@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="bg-app border-app"
+                    className="bg-app border-app text-app-foreground placeholder:text-app-muted"
                     required
                   />
                 </div>
@@ -183,7 +183,7 @@ export default function ReferralsPage() {
                     placeholder="John Doe"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="bg-app border-app"
+                    className="bg-app border-app text-app-foreground placeholder:text-app-muted"
                   />
                 </div>
               </div>
