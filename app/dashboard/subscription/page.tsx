@@ -227,15 +227,6 @@ export default function Subscription() {
               </div>
             ))}
           </div>
-
-          <div className="mt-6 pt-6 border-t border-app flex flex-wrap gap-3">
-            <Button variant="outline" className="bg-app-card border-app text-app-foreground hover:bg-app-muted">
-              Change Plan
-            </Button>
-            <Button variant="outline" className="bg-app-card border-app text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200">
-              Cancel Subscription
-            </Button>
-          </div>
         </div>
 
         {/* Usage Summary */}
