@@ -13,9 +13,9 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 export async function POST(request: NextRequest) {
   try {
-    const { planId, userId, invitationToken } = await request.json();
+    const { planId, userId, invitationToken, isUpgrade } = await request.json();
 
-    console.log('Checkout request:', { planId, userId, invitationToken });
+    console.log('Checkout request:', { planId, userId, invitationToken, isUpgrade });
 
     if (!planId || !userId) {
       return NextResponse.json({ error: 'Plan ID and User ID are required' }, { status: 400 });
@@ -75,13 +75,35 @@ export async function POST(request: NextRequest) {
     // Check if user already has active subscription
     const { data: existingSubscription } = await supabase
       .from('broker_subscriptions')
-      .select('id, status')
+      .select('id, status, stripe_subscription_id')
       .eq('broker_id', userId)
       .eq('status', 'active')
       .maybeSingle();
 
-    if (existingSubscription) {
+    // If user has active subscription and this is NOT an upgrade request, block
+    if (existingSubscription && !isUpgrade) {
       return NextResponse.json({ error: 'User already has an active subscription' }, { status: 409 });
+    }
+
+    // If this is an upgrade and user has existing subscription, we need to handle differently
+    // For upgrades, we'll use Stripe's subscription update or create a new checkout for upgrade
+    if (existingSubscription && isUpgrade && existingSubscription.stripe_subscription_id) {
+      // For now, we'll cancel the old subscription and create new one via checkout
+      // In production, you might want to use stripe.subscriptions.update for prorated upgrades
+      try {
+        await stripe.subscriptions.cancel(existingSubscription.stripe_subscription_id, {
+          prorate: true,
+        });
+        
+        // Update local subscription status
+        await supabase
+          .from('broker_subscriptions')
+          .update({ status: 'cancelled' })
+          .eq('id', existingSubscription.id);
+      } catch (cancelError) {
+        console.log('Could not cancel existing subscription:', cancelError);
+        // Continue anyway - user might have cancelled manually
+      }
     }
 
     // Create or get Stripe customer
@@ -107,6 +129,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe checkout session
+    const successUrl = isUpgrade 
+      ? `${APP_URL}/dashboard/subscription?upgrade=success&session_id={CHECKOUT_SESSION_ID}`
+      : `${APP_URL}/dashboard?subscription=success&session_id={CHECKOUT_SESSION_ID}`;
+    
+    const cancelUrl = isUpgrade
+      ? `${APP_URL}/dashboard/subscription?upgrade=cancelled`
+      : `${APP_URL}/signup?subscription=cancelled${invitationToken ? `&invitation=${invitationToken}` : ''}&step=plan`;
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
@@ -127,8 +157,8 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${APP_URL}/dashboard?subscription=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${APP_URL}/signup?subscription=cancelled${invitationToken ? `&invitation=${invitationToken}` : ''}&step=plan`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         user_id: userId,
         plan_id: planId,

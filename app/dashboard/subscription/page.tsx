@@ -33,12 +33,14 @@ import {
 } from "@/components/ui/dialog";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useSubscription, useSubscriptionPlans, useBrokerStats } from "@/lib/hooks/use-database";
+import { useAuth } from "@/lib/supabase/auth-context";
 import { toast } from "sonner";
 
 export default function Subscription() {
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null);
   const router = useRouter();
+  const { user } = useAuth();
 
   const { data: subscription, isLoading: subscriptionLoading } = useSubscription();
   const { data: plans = [], isLoading: plansLoading } = useSubscriptionPlans();
@@ -48,6 +50,11 @@ export default function Subscription() {
 
   // Handle plan upgrade
   const handleUpgrade = async (planId: string, planName: string) => {
+    if (!user?.id) {
+      toast.error('You must be logged in to upgrade');
+      return;
+    }
+    
     setUpgradingPlan(planId);
     try {
       const response = await fetch('/api/stripe/checkout', {
@@ -55,6 +62,7 @@ export default function Subscription() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           planId,
+          userId: user.id,
           returnUrl: `${window.location.origin}/dashboard/subscription`,
           isUpgrade: true
         }),
